@@ -1,10 +1,14 @@
 package io.gitlab.arturbosch.detekt.api
 
+import org.jetbrains.kotlin.cli.common.CLIConfigurationKeys
+import org.jetbrains.kotlin.cli.common.messages.MessageRenderer
+import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector
 import org.jetbrains.kotlin.cli.jvm.compiler.EnvironmentConfigFiles
 import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
 import org.jetbrains.kotlin.com.intellij.mock.MockProject
 import org.jetbrains.kotlin.com.intellij.openapi.extensions.ExtensionPoint
 import org.jetbrains.kotlin.com.intellij.openapi.extensions.Extensions
+import org.jetbrains.kotlin.com.intellij.openapi.project.Project
 import org.jetbrains.kotlin.com.intellij.openapi.util.Disposer
 import org.jetbrains.kotlin.com.intellij.openapi.util.UserDataHolderBase
 import org.jetbrains.kotlin.com.intellij.pom.PomModel
@@ -17,12 +21,20 @@ import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.psi.KtPsiFactory
 import sun.reflect.ReflectionFactory
 
-val psiProject = KotlinCoreEnvironment.createForProduction(Disposer.newDisposable(),
-		CompilerConfiguration(), EnvironmentConfigFiles.JVM_CONFIG_FILES).project.apply {
-	makeMutable(this as MockProject)
-}
+val psiProject = createKotlinCoreEnvironment()
 
 val psiFactory = KtPsiFactory(psiProject, false)
+
+private fun createKotlinCoreEnvironment(): Project {
+	System.setProperty("idea.io.use.fallback", "true")
+	val configuration = CompilerConfiguration()
+	configuration.put(CLIConfigurationKeys.MESSAGE_COLLECTOR_KEY,
+			PrintingMessageCollector(System.err, MessageRenderer.PLAIN_FULL_PATHS, false))
+	return KotlinCoreEnvironment.createForProduction(Disposer.newDisposable(),
+			configuration, EnvironmentConfigFiles.JVM_CONFIG_FILES).project.apply {
+		makeMutable(this as MockProject)
+	}
+}
 
 private fun makeMutable(project: MockProject) {
 	// Based on KtLint by Shyiko

@@ -9,6 +9,8 @@ import org.jetbrains.kotlin.psi.KtPrimaryConstructor
 import org.jetbrains.kotlin.psi.psiUtil.visibilityModifierType
 
 /**
+ * Reports empty default constructors. Empty blocks of code serve no purpose and should be removed.
+ *
  * @active since v1.0.0
  * @author schalkms
  * @author Marvin Ramin
@@ -19,7 +21,7 @@ class EmptyDefaultConstructor(config: Config) : EmptyRule(config = config) {
 		if (hasPublicVisibility(constructor.visibilityModifierType())
 				&& constructor.annotationEntries.isEmpty()
 				&& constructor.valueParameters.isEmpty()) {
-			report(CodeSmell(issue, Entity.from(constructor), message = ""))
+			report(CodeSmell(issue, Entity.from(constructor), "An empty default constructor can be removed."))
 		}
 	}
 

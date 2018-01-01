@@ -16,7 +16,7 @@ class KtTreeCompilerSpec : Spek({
 
 		it("should compile all files") {
 			val ktFiles = KtTreeCompiler().compile(path)
-			assertTrue(ktFiles.size >= 2, "It should compile more than two files, but did ${ktFiles.size}")
+			assertTrue(ktFiles.size >= 3, "It should compile more than three files, but did ${ktFiles.size}")
 		}
 
 		it("should filter the file 'Default.kt'") {
@@ -30,7 +30,8 @@ class KtTreeCompilerSpec : Spek({
 			val filter = PathFilter(".*Default.kt")
 			val filterTwo = PathFilter(".*Test.*")
 			val filterThree = PathFilter(".*Complex.*")
-			val ktFiles = KtTreeCompiler(filters = listOf(filter, filterTwo, filterThree)).compile(path)
+			val filterFour = PathFilter(".*KotlinScript.*")
+			val ktFiles = KtTreeCompiler(filters = listOf(filter, filterTwo, filterThree, filterFour)).compile(path)
 			assertThat(ktFiles).isEmpty()
 		}
 

@@ -8,6 +8,8 @@ import org.jetbrains.kotlin.lexer.KtSingleValueToken
 import org.jetbrains.kotlin.psi.KtIfExpression
 
 /**
+ * Reports empty `if` blocks. Empty blocks of code serve no purpose and should be removed.
+ *
  * @active since v1.0.0
  * @author Artur Bosch
  * @author Marvin Ramin
@@ -22,7 +24,7 @@ class EmptyIfBlock(config: Config) : EmptyRule(config) {
 	private fun checkThenBodyForLoneSemicolon(expression: KtIfExpression) {
 		val valueOfNextSibling = (expression.nextSibling as? LeafPsiElement)?.elementType as? KtSingleValueToken
 		if (valueOfNextSibling?.value?.trim() == ";") {
-			report(CodeSmell(issue, Entity.from(expression), message = ""))
+			report(CodeSmell(issue, Entity.from(expression), "This if block is empty and can be removed."))
 		}
 	}
 

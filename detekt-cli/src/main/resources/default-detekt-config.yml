@@ -267,7 +267,7 @@ style:
   LoopWithTooManyJumpStatements:
     active: false
     maxJumpCount: 1
-  MethodNameEqualsClassName:
+  MemberNameEqualsClassName:
     active: false
     ignoreOverriddenFunction: true
   VariableNaming:
@@ -293,7 +293,7 @@ style:
     packagePattern: '^[a-z]+(\.[a-z][a-z0-9]*)*$'
   ClassNaming:
     active: true
-    classPattern: '[A-Z$][a-zA-Z$]*'
+    classPattern: '[A-Z$][a-zA-Z0-9$]*'
   EnumNaming:
     active: true
     enumEntryPattern: '^[A-Z$][a-zA-Z_$]*$'

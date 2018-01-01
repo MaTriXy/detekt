@@ -6,6 +6,8 @@ import io.gitlab.arturbosch.detekt.api.Entity
 import org.jetbrains.kotlin.psi.KtWhenExpression
 
 /**
+ * Reports empty `when` expressions. Empty blocks of code serve no purpose and should be removed.
+ *
  * @active since v1.0.0
  * @author Artur Bosch
  * @author Marvin Ramin
@@ -14,7 +16,7 @@ class EmptyWhenBlock(config: Config) : EmptyRule(config) {
 
 	override fun visitWhenExpression(expression: KtWhenExpression) {
 		if (expression.entries.isEmpty()) {
-			report(CodeSmell(issue, Entity.from(expression), message = ""))
+			report(CodeSmell(issue, Entity.from(expression), "This when block is empty."))
 		}
 	}
 

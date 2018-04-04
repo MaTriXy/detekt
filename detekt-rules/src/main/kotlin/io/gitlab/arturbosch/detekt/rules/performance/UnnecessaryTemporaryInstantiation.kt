@@ -2,6 +2,7 @@ package io.gitlab.arturbosch.detekt.rules.performance
 
 import io.gitlab.arturbosch.detekt.api.CodeSmell
 import io.gitlab.arturbosch.detekt.api.Config
+import io.gitlab.arturbosch.detekt.api.Debt
 import io.gitlab.arturbosch.detekt.api.Entity
 import io.gitlab.arturbosch.detekt.api.Issue
 import io.gitlab.arturbosch.detekt.api.Rule
@@ -16,7 +17,7 @@ import org.jetbrains.kotlin.psi.KtExpression
  * To solve this issue, remove the wrapping type.
  *
  * <noncompliant>
- * val i = Integer(1).toString() // temporary instantiation for conversion
+ * val i = Integer(1).toString() // temporary Integer instantiation just for the conversion
  * </noncompliant>
  *
  * <compliant>
@@ -31,14 +32,15 @@ import org.jetbrains.kotlin.psi.KtExpression
 class UnnecessaryTemporaryInstantiation(config: Config = Config.empty) : Rule(config) {
 
 	override val issue: Issue = Issue("UnnecessaryTemporaryInstantiation", Severity.Performance,
-			"Avoid temporary objects when converting primitive types to String.")
+			"Avoid temporary objects when converting primitive types to String.",
+			Debt.FIVE_MINS)
 
 	private val types: Set<String> = hashSetOf("Boolean", "Byte", "Short", "Integer", "Long", "Float", "Double")
 
 	override fun visitCallExpression(expression: KtCallExpression) {
 		if (isPrimitiveWrapperType(expression.calleeExpression)
 				&& isToStringMethod(expression.nextSibling?.nextSibling)) {
-			report(CodeSmell(issue, Entity.from(expression), message = ""))
+			report(CodeSmell(issue, Entity.from(expression), issue.description))
 		}
 	}
 

@@ -27,6 +27,8 @@ inline fun markdown(content: MarkdownContent.() -> Unit): String {
 inline fun MarkdownContent.markdown(markdown: () -> String) = append(markdown())
 inline fun MarkdownContent.paragraph(content: () -> String) = append("${content()}\n")
 
+inline fun MarkdownContent.bold(content: () -> String) = "**${content()}**"
+
 inline fun MarkdownContent.h1(heading: () -> String) = append("# ${heading()}\n")
 inline fun MarkdownContent.h2(heading: () -> String) = append("## ${heading()}\n")
 inline fun MarkdownContent.h3(heading: () -> String) = append("### ${heading()}\n")
@@ -39,7 +41,7 @@ inline fun MarkdownContent.orderedList(sectionList: () -> List<String>) {
 }
 
 inline fun MarkdownContent.referenceToHeading(reference: () -> String) =
-		"[${reference()}](#${reference().replace(' ', '-')})"
+		"[${reference()}](#${reference().replace(' ', '-').toLowerCase()})"
 
 inline fun MarkdownContent.code(code: () -> String) = "`${code()}`"
 inline fun MarkdownContent.codeBlock(code: () -> String) = "```kotlin\n${code()}\n```"

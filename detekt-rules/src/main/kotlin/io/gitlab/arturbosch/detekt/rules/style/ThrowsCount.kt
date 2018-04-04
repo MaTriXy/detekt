@@ -13,6 +13,8 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtThrowExpression
 
 /**
+ * Functions should have clear `throw` statements. Functions with many `throw` statements can be harder to read and lead
+ * to confusion. Instead prefer to limit the amount of `throw` statements in a function.
  *
  * <noncompliant>
  * fun foo(i: Int) {
@@ -42,7 +44,7 @@ class ThrowsCount(config: Config = Config.empty) : Rule(config) {
 
 	override val issue = Issue(javaClass.simpleName, Severity.Style,
 			"Restrict the number of throw statements in methods.",
-			Debt.FIVE_MINS)
+			Debt.TEN_MINS)
 
 	private val max = valueOrDefault(MAX, 2)
 
@@ -51,7 +53,8 @@ class ThrowsCount(config: Config = Config.empty) : Rule(config) {
 		if (!function.hasModifier(KtTokens.OVERRIDE_KEYWORD)) {
 			val count = function.collectByType<KtThrowExpression>().count()
 			if (count > max) {
-				report(CodeSmell(issue, Entity.from(function), message = ""))
+				report(CodeSmell(issue, Entity.from(function), "Too many throw statements in the function" +
+						" ${function.nameAsSafeName}. The maximum number of allowed throw statements is $max."))
 			}
 		}
 	}

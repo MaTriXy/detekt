@@ -16,6 +16,22 @@ import org.jetbrains.kotlin.psi.KtIsExpression
 import org.jetbrains.kotlin.psi.KtNameReferenceExpression
 
 /**
+ * This rule inspects casts and reports casts which could be replaced with safe casts instead.
+ *
+ * <noncompliant>
+ * fun numberMagic(number: Number) {
+ *     val i = if (number is Int) number else null
+ *     // ...
+ * }
+ * </noncompliant>
+ *
+ * <compliant>
+ * fun numberMagic(number: Number) {
+ *     val i = number as? Int
+ *     // ...
+ * }
+ * </compliant>
+ *
  * @active since v1.0.0
  * @author schalkms
  * @author Marvin Ramin
@@ -52,6 +68,6 @@ class SafeCast(config: Config = Config.empty) : Rule(config) {
 	}
 
 	private fun addReport(expression: KtIfExpression) {
-		report(CodeSmell(issue, Entity.from(expression), message = ""))
+		report(CodeSmell(issue, Entity.from(expression), "This cast should be replaced with a safe cast: as?"))
 	}
 }

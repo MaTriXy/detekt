@@ -1,6 +1,7 @@
 package io.gitlab.arturbosch.detekt.rules.complexity
 
 import io.gitlab.arturbosch.detekt.api.Config
+import io.gitlab.arturbosch.detekt.api.Debt
 import io.gitlab.arturbosch.detekt.api.Entity
 import io.gitlab.arturbosch.detekt.api.Issue
 import io.gitlab.arturbosch.detekt.api.Metric
@@ -15,6 +16,9 @@ import org.jetbrains.kotlin.psi.KtIfExpression
 import org.jetbrains.kotlin.psi.KtWhileExpression
 
 /**
+ * Complex conditions make it hard to understand which cases lead to the condition being true or false. To improve
+ * readability and understanding of complex conditions consider extracting them into well-named functions or variables
+ * and call those instead.
  *
  * <noncompliant>
  * val str = "foo"
@@ -32,18 +36,18 @@ import org.jetbrains.kotlin.psi.KtWhileExpression
  * fun hasCorrectEnding() = return !str.endsWith("foo") && !str.endsWith("bar") && !str.endsWith("_")
  * </compliant>
  *
- * @configuration threshold - (default: 3)
+ * @configuration threshold - (default: 4)
  *
  * @active since v1.0.0
  * @author Artur Bosch
  * @author Marvin Ramin
  */
 class ComplexCondition(config: Config = Config.empty,
-					   threshold: Int = DEFAULT_ACCEPTED_NESTING) : ThresholdRule(config, threshold) {
+					   threshold: Int = DEFAULT_CONDITIONS_COUNT) : ThresholdRule(config, threshold) {
 
 	override val issue = Issue("ComplexCondition", Severity.Maintainability,
-			"Complex conditions should be simplified and extracted " +
-					"into well-named methods if necessary.")
+			"Complex conditions should be simplified and extracted into well-named methods if necessary.",
+			Debt.TWENTY_MINS)
 
 	override fun visitIfExpression(expression: KtIfExpression) {
 		val condition = expression.condition
@@ -72,7 +76,7 @@ class ComplexCondition(config: Config = Config.empty,
 			}
 			val conditionString = longestBinExpr.text
 			val count = frequency(conditionString, "&&") + frequency(conditionString, "||") + 1
-			if (count > threshold) {
+			if (count >= threshold) {
 				report(ThresholdedCodeSmell(issue,
 						Entity.from(condition),
 						Metric("SIZE", count, threshold),
@@ -97,6 +101,8 @@ class ComplexCondition(config: Config = Config.empty,
 
 		return count
 	}
-}
 
-private const val DEFAULT_ACCEPTED_NESTING = 3
+	companion object {
+		const val DEFAULT_CONDITIONS_COUNT = 4
+	}
+}

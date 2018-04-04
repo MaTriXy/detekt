@@ -2,6 +2,7 @@ package io.gitlab.arturbosch.detekt.rules.exceptions
 
 import io.gitlab.arturbosch.detekt.api.CodeSmell
 import io.gitlab.arturbosch.detekt.api.Config
+import io.gitlab.arturbosch.detekt.api.Debt
 import io.gitlab.arturbosch.detekt.api.Entity
 import io.gitlab.arturbosch.detekt.api.Issue
 import io.gitlab.arturbosch.detekt.api.Rule
@@ -17,7 +18,7 @@ import org.jetbrains.kotlin.psi.KtCatchClause
  * fun foo() {
  *     try {
  *         // ... do some I/O
- *     } catch(e: Exception) { } // too generic exception thrown here
+ *     } catch(e: Exception) { } // too generic exception caught here
  * }
  * </noncompliant>
  *
@@ -29,7 +30,7 @@ import org.jetbrains.kotlin.psi.KtCatchClause
  * }
  * </compliant>
  *
- * @configuration exceptions - exceptions which are too generic and should not be caught
+ * @configuration exceptionNames - exceptions which are too generic and should not be caught
  * (default: - ArrayIndexOutOfBoundsException
  *			 - Error
  *			 - Exception
@@ -43,13 +44,15 @@ import org.jetbrains.kotlin.psi.KtCatchClause
  * @author Artur Bosch
  * @author Marvin Ramin
  * @author schalkms
+ * @author olivierlemasle
  */
 class TooGenericExceptionCaught(config: Config) : Rule(config) {
 
 	override val issue = Issue(javaClass.simpleName,
 			Severity.Defect,
-			"Thrown exception is too generic. " +
-					"Prefer throwing project specific exceptions to handle error cases.")
+			"Caught exception is too generic. " +
+					"Prefer catching specific exceptions to the case that is currently handled.",
+			Debt.TWENTY_MINS)
 
 	private val exceptions: Set<String> = valueOrDefault(
 			CAUGHT_EXCEPTIONS_PROPERTY, caughtExceptionDefaults).toHashSet()
@@ -58,13 +61,13 @@ class TooGenericExceptionCaught(config: Config) : Rule(config) {
 		catchClause.catchParameter?.let {
 			val text = it.typeReference?.text
 			if (text != null && text in exceptions)
-				report(CodeSmell(issue, Entity.from(it), message = ""))
+				report(CodeSmell(issue, Entity.from(it), issue.description))
 		}
 		super.visitCatchSection(catchClause)
 	}
 
 	companion object {
-		const val CAUGHT_EXCEPTIONS_PROPERTY = "exceptions"
+		const val CAUGHT_EXCEPTIONS_PROPERTY = "exceptionNames"
 	}
 }
 

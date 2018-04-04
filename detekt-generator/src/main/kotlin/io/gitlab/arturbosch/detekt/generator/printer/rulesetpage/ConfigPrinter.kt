@@ -80,13 +80,12 @@ object ConfigPrinter : DocumentationPrinter<List<RuleSetPage>> {
 	private fun defaultBuildConfiguration(): String {
 		return """
 			build:
-			  warningThreshold: 5
-			  failThreshold: 10
+			  maxIssues: 10
 			  weights:
-			    complexity: 2
-			    formatting: 1
-			    LongParameterList: 1
-			    comments: 1
+			    # complexity: 2
+			    # LongParameterList: 1
+			    # style: 1
+			    # comments: 1
 			""".trimIndent()
 	}
 
@@ -121,14 +120,15 @@ object ConfigPrinter : DocumentationPrinter<List<RuleSetPage>> {
 			output-reports:
 			  active: true
 			  exclude:
+			  #  - 'HtmlOutputReport'
 			  #  - 'PlainOutputReport'
 			  #  - 'XmlOutputReport'
 			""".trimIndent()
 	}
-}
 
-private fun String.isYamlList() = trim().startsWith("-")
-private fun String.toList(): List<String> {
-	return split("\n").map { it.replace("-", "") }
-			.map { it.trim() }
+	private fun String.isYamlList() = trim().startsWith("-")
+
+	private fun String.toList(): List<String> {
+		return split("\n").map { it.replace("-", "") }.map { it.trim() }
+	}
 }

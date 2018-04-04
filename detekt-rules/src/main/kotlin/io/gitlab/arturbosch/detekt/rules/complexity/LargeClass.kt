@@ -1,6 +1,7 @@
 package io.gitlab.arturbosch.detekt.rules.complexity
 
 import io.gitlab.arturbosch.detekt.api.Config
+import io.gitlab.arturbosch.detekt.api.Debt
 import io.gitlab.arturbosch.detekt.api.Entity
 import io.gitlab.arturbosch.detekt.api.Issue
 import io.gitlab.arturbosch.detekt.api.Metric
@@ -22,6 +23,11 @@ import org.jetbrains.kotlin.psi.KtWhenExpression
 import java.util.ArrayDeque
 
 /**
+ * This rule reports large classes. Classes should generally have one responsibility. Large classes can indicate that
+ * the class does instead handle multiple responsibilities. Instead of doing many things at once prefer to
+ * split up large classes into smaller classes. These smaller classes are then easier to understand and handle less
+ * things.
+ *
  * @configuration threshold - maximum size of a class (default: 150)
  *
  * @active since v1.0.0
@@ -31,10 +37,13 @@ import java.util.ArrayDeque
 class LargeClass(config: Config = Config.empty,
 				 threshold: Int = DEFAULT_ACCEPTED_CLASS_LENGTH) : ThresholdRule(config, threshold) {
 
+	private var containsClassOrObject = false
+
 	override val issue = Issue("LargeClass",
 			Severity.Maintainability,
 			"One class should have one responsibility. Large classes tend to handle many things at once. " +
-					"Split up large classes into smaller classes that are easier to understand.")
+					"Split up large classes into smaller classes that are easier to understand.",
+			Debt.TWENTY_MINS)
 
 	private val locStack = ArrayDeque<Int>()
 
@@ -43,7 +52,9 @@ class LargeClass(config: Config = Config.empty,
 	}
 
 	private fun addToHead(amount: Int) {
-		locStack.push(locStack.pop() + amount)
+		if (containsClassOrObject) {
+			locStack.push(locStack.pop() + amount)
+		}
 	}
 
 	override fun visitFile(file: PsiFile?) { //TODO
@@ -52,6 +63,7 @@ class LargeClass(config: Config = Config.empty,
 	}
 
 	override fun visitClassOrObject(classOrObject: KtClassOrObject) {
+		containsClassOrObject = true
 		locStack.push(0)
 		classOrObject.getBody()?.let {
 			addToHead(it.declarations.size)
@@ -59,7 +71,7 @@ class LargeClass(config: Config = Config.empty,
 		incHead() // for class body
 		super.visitClassOrObject(classOrObject)
 		val loc = locStack.pop()
-		if (loc > threshold) {
+		if (loc >= threshold) {
 			report(ThresholdedCodeSmell(issue,
 					Entity.from(classOrObject),
 					Metric("SIZE", loc, threshold),
@@ -68,7 +80,7 @@ class LargeClass(config: Config = Config.empty,
 	}
 
 	/**
-	 * Top level members must be skipped as loc stack can be empty - #64
+	 * Top level members must be skipped as loc stack can be empty. See #64 for more info.
 	 */
 	override fun visitProperty(property: KtProperty) {
 		if (property.isTopLevel) return
@@ -117,6 +129,8 @@ class LargeClass(config: Config = Config.empty,
 		super.visitCallExpression(expression)
 	}
 
+	companion object {
+		const val DEFAULT_ACCEPTED_CLASS_LENGTH = 150
+	}
 }
 
-private const val DEFAULT_ACCEPTED_CLASS_LENGTH = 70

@@ -4,9 +4,9 @@
 [![build status](https://travis-ci.org/arturbosch/detekt.svg?branch=master)](https://travis-ci.org/arturbosch/detekt)
 [![build status windows](https://ci.appveyor.com/api/projects/status/3q9g98vveiul7yut/branch/master?svg=true)](https://ci.appveyor.com/project/arturbosch/detekt)
 [ ![Download](https://api.bintray.com/packages/arturbosch/code-analysis/detekt/images/download.svg) ](https://bintray.com/arturbosch/code-analysis/detekt/_latestVersion)
-[![gradle plugin](https://img.shields.io/badge/gradle_plugin-1.0.0.RC6-blue.svg?style=flat-square)](https://plugins.gradle.org/plugin/io.gitlab.arturbosch.detekt)
+[![gradle plugin](https://img.shields.io/badge/gradle_plugin-1.0.0.RC6.4-blue.svg?style=flat-square)](https://plugins.gradle.org/plugin/io.gitlab.arturbosch.detekt)
 
-[![All Contributors](https://img.shields.io/badge/all_contributors-34-orange.svg?style=flat-square)](#contributors)
+[![All Contributors](https://img.shields.io/badge/all_contributors-40-orange.svg?style=flat-square)](#contributors)
 [![Awesome Kotlin Badge](https://kotlin.link/awesome-kotlin.svg)](https://github.com/KotlinBy/awesome-kotlin)
 
 Meet _detekt_, a static code analysis tool for the _Kotlin_ programming language.
@@ -22,11 +22,12 @@ It operates on the abstract syntax tree provided by the Kotlin compiler.
 - suppress findings with Kotlin's @Suppress and Java's @SuppressWarnings annotations
 - specify code smell thresholds to break your build or print a warning
 - code Smell baseline and ignore lists for legacy projects
-- [gradle plugin](#gradleplugin) for code analysis via Gradle builds
 - gradle tasks to use local `intellij` distribution for [formatting and inspecting](#idea) kotlin code
 - optionally configure detekt for each sub module by using [profiles](#closure) (gradle-plugin)
+- extensible by own rule sets and `FileProcessListener's`
+- [gradle plugin](#gradleplugin) for code analysis via Gradle builds
 - [sonarqube integration](https://github.com/arturbosch/sonar-kotlin)
-- **NEW** extensible by own rule sets and `FileProcessListener's`
+- [intellij integration](https://github.com/arturbosch/detekt-intellij-plugin)
 
 ### Table of contents
 1. [Commandline interface](#build)
@@ -249,8 +250,8 @@ detekt {
         input = "$projectDir/src/main/kotlin" // Which part of your project should be analyzed?
         config = "$projectDir/detekt.yml" // Use $project.projectDir or to navigate inside your project 
         configResource = "/detekt.yml" // Use this parameter instead of config if your detekt yaml file is inside your resources. Is needed for multi project maven tasks.
-        filters = ".*test.*, .*/resources/.*" // What paths to exclude? Use comma oder semicolon to separate
-        ruleSets = "other/optional/ruleset.jar" // Custom rule sets can be linked to this, use comma oder semicolon to separate, remove if unused.
+        filters = ".*test.*, .*/resources/.*" // What paths to exclude? Use comma or semicolon to separate
+        ruleSets = "other/optional/ruleset.jar" // Custom rule sets can be linked to this, use comma or semicolon to separate, remove if unused.
         disableDefaultRuleSets = false // Disables the default rule set. Just use detekt as the detection engine with your custom rule sets.
         output = "$project.projectDir/reports" // Directory where output reports are stored (if present).
         outputName = "my-module" // This parameter is used to derive the output report name
@@ -356,7 +357,6 @@ dependencies {
                                 <arg value="${basedir}/src"/>
                                 <arg value="-f"/>
                                 <arg value=".*test.*"/>
-                                <arg value="--useTabs"/>
                             </java>
                         </target>
                     </configuration>
@@ -394,16 +394,16 @@ dependencies {
 
 ### <a name="rulesets">RuleSets</a>
 
-Currently there are seven rule sets which are used per default when running the cli.
+Currently there are eight rule sets which are used per default when running the CLI.
 
-- complexity    - has rules to detect _LongMethod, LongParameterList, LargeClass, ComplexMethod ..._ smells
-- style         - detects wildcard imports and naming violations
-- comments      - has rules to detect missing KDoc over public members and unnecessary KDoc over private members
-- exceptions    - too general exceptions are used in throw and catch statements like RuntimeException, Error or Throwable
-- empty         - finds empty block statements
-- potential-bugs    - code is structured in a way it can lead to bugs like 'only equals but not hashcode is implemented' or explicit garbage
- collection calls
-- performance   - finds potential performance issues
+- [complexity](detekt-generator/docs/pages/documentation/complexity.md) - This rule set contains rules that report complex code.
+- [style](detekt-generator/docs/pages/documentation/style.md) - The Style ruleset provides rules that assert the style of the code. This will help keep code in line with the given code style guidelines.
+- [comments](detekt-generator/docs/pages/documentation/comments.md) - This rule set provides rules that address issues in comments and documentation of the code.
+- [exceptions](detekt-generator/docs/pages/documentation/exceptions.md) - Rules in this rule set report issues related to how code throws and handles Exceptions.
+- [empty-blocks](detekt-generator/docs/pages/documentation/empty-blocks.md) - The empty-blocks ruleset contains rules that will report empty blocks of code which should be avoided.
+- [naming](detekt-generator/docs/pages/documentation/naming.md) - The naming ruleset contains rules which assert the naming of different parts of the codebase.
+- [potential-bugs](detekt-generator/docs/pages/documentation/potential-bugs.md) - The potential-bugs rule set provides rules that detect potential bugs.
+- [performance](detekt-generator/docs/pages/documentation/performance.md) - The performance rule set analyzes code for potential performance problems.
 
 ### <a name="rulesetconfig">RuleSet Configuration</a>
 
@@ -415,11 +415,11 @@ Export the default config with the `--generate-config` flag or copy and modify t
 
 #### Override defaults ([via `failFast` option](https://github.com/arturbosch/detekt/issues/179))
 
-Set `failFast: true` in your detekt.yml configuration file.  As a result, every rule will be enabled and `warningThreshold` and `errorThreshold` will be set to 0.  Weights can then be ignored and left untouched.
+Set `failFast: true` in your detekt.yml configuration file.  As a result, every rule will be enabled and `maxIssues` will be set to 0.  Weights can then be ignored and left untouched.
 
 To adjust, for example, the maxLineLength value, use this configuration file:
 ```
-failFast:true
+failFast: true
 autoCorrect: true
 
 style:
@@ -443,8 +443,7 @@ _detekt_ supports the Java (`@SuppressWarnings`) and Kotlin (`@Suppress`) style 
 _detekt_ now can throw a BuildFailure(Exception) and let the build fail with following config parameters:
 ```yaml
 build:
-  warningThreshold: 5 // Five weighted findings 
-  failThreshold: 10 // Ten weighted smells to fail the build
+  maxIssues: 10 // Ten weighted smells to fail the build
   weights:
     complexity: 2 // Whole complexity rule should add two for each finding.
     LongParameterList: 1 // The specific rule should not add two.
@@ -504,7 +503,7 @@ class TooManyFunctions2(config: Config) : Rule("TooManyFunctionsTwo", Severity.M
 		if (amount > 10) {
 			addFindings(CodeSmell(
 					id = id, entity = Entity.from(file),
-					description = "Too many functions can make the maintainability of a file more costly",
+					description = "Too many functions can make the maintainability of a file costlier",
 					metrics = listOf(Metric(type = "SIZE", value = amount, threshold = 10)),
 					references = listOf())
 			)
@@ -550,14 +549,14 @@ For example if you do not like the default printing of findings, we can ... TODO
 
 #### <a name="testing">Testing your rules</a>
 
-To test your rules you need a KtFile object and use it's _visit_ method.
+To test your rules you need a KtFile object and use its _visit_ method.
 There are two predefined methods to help obtaining a KtFile:
 
 - compileContentForTest(content: String): KtFile
 - compileForTest(path: Path): KtFile
 
 New with M3 there is a special detekt-test module, which specifies above two methods but also
-Rule extension functions that allow allow to skip compilation, ktFile and visit procedures.
+Rule extension functions that allow to skip compilation, ktFile and visit procedures.
 
 - Rule.lint(StringContent/Path/KtFile) returns just the findings for given content
 
@@ -587,6 +586,8 @@ to write down false positive detections. The `ID` node must be build of `<RuleID
 inside the report file.
 
 ### <a name="contributors">Contributors</a>
+
+If you contributed to detekt but your name is not in the list, please feel free to add yourself to it!
 
 - [Artur Bosch](https://github.com/arturbosch) - Maintainer
 - [Marvin Ramin](https://github.com/Mauin) - Collaborator, Bunch of rules, Active on Issues, refactorings, MultiRule
@@ -619,23 +620,34 @@ inside the report file.
 - [Ilya Zorin](https://github.com/geralt-encore) - Rule improvement: UnnecessaryAbstractClass
 - [Gesh Markov](https://github.com/markov) - Improve error message for incorrect configuration file
 - [Patrick Pilch](https://github.com/patrickpilch) - Rule improvement: ReturnCount
+- [Serj Lotutovici](https://github.com/serj-lotutovici) - Rule improvement: LongParameterList
+- [Dmitry Primshyts](https://github.com/deeprim) - Rule improvement: MagicNumber
+- [Egor Neliuba](https://github.com/egor-n) - Rule improvement: EmptyFunctionBlock, EmptyClassBlock
+- [Said Tahsin Dane](https://github.com/tasomaniac/) - Gradle plugin improvements
+- [Misa Torres](https://github.com/misaelmt) - Added: TrailingWhitespace and NoTabs rules
+- [R.A. Porter](https://github.com/coyotesqrl) - Updated Readme links to RuleSets
 
 ### <a name="mentions">Mentions</a>
 
 [![androidweekly](https://img.shields.io/badge/androidweekly.net-259-orange.svg?style=flat-square)](http://androidweekly.net/issues/issue-259) 
 [![androidweekly](https://img.shields.io/badge/androidweekly.cn-154-orange.svg?style=flat-square)](http://androidweekly.cn/android-dev-wekly-issue-154/)
 
-As mentioned/used in ...
+As mentioned in...
 
+- [Codacy](https://www.codacy.com)
 - [@medium/acerezoluna/static-code-analysis-tools-for-kotlin-in-android](https://medium.com/@acerezoluna/static-code-analysis-tools-for-kotlin-in-android-fa072125fd50)
 - [@medium/annayan/writing-custom-lint-rules-for-your-kotlin-project-with-detekt](https://proandroiddev.com/writing-custom-lint-rules-for-your-kotlin-project-with-detekt-653e4dbbe8b9)
 - [Free Continuous Integration for modern Android apps with CircleCI](https://tips.seebrock3r.me/free-continuous-integration-for-modern-android-apps-with-circleci-940e33451c83)
-- [sputnik is a free tool for static code review and provides support for detekt](https://github.com/TouK/sputnik)
-- [Gradle plugin that generates ErrorProne, Findbugs, Checkstyle, PMD, CPD, Lint, Detekt & Ktlint Tasks for every subproject](https://github.com/vanniktech/gradle-code-quality-tools-plugin)
-- [Java library for parsing report files from static code analysis](https://github.com/tomasbjerre/violations-lib)
 - [Static code analysis for Kotlin in Android](https://blog.thefuntasty.com/static-code-analysis-for-kotlin-in-android-8676c8d6a3c5)
 - [The Art of Android DevOps](https://blog.undabot.com/the-art-of-android-devops-fa29396bc9ee)
 - [Android Basics: Continuous Integration](https://academy.realm.io/posts/360-andev-2017-mark-scheel-continuous-integration-android/)
+- [Kotlin Static Analysis — why and how?](https://proandroiddev.com/kotlin-static-analysis-why-and-how-a12042e34a98)
+
+Integrations:
+- [Gradle plugin that generates ErrorProne, Findbugs, Checkstyle, PMD, CPD, Lint, Detekt & Ktlint Tasks for every subproject](https://github.com/vanniktech/gradle-code-quality-tools-plugin)
+- [Java library for parsing report files from static code analysis](https://github.com/tomasbjerre/violations-lib)
+- [sputnik is a free tool for static code review and provides support for detekt](https://github.com/TouK/sputnik)
+- [Novoda Gradle Static Analysis plugin](https://github.com/novoda/gradle-static-analysis-plugin)
 
 #### Credits
 - [JetBrains](https://github.com/jetbrains/) - Creating Intellij + Kotlin

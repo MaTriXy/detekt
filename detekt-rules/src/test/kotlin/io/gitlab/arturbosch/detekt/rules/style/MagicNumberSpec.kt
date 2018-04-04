@@ -328,6 +328,15 @@ class MagicNumberSpec : Spek({
 		}
 	}
 
+	given("a magic number number in a constructor call") {
+
+		it("should report") {
+			val code = "val file = File(42)"
+			val findings = MagicNumber().lint(code)
+			assertThat(findings).hasSize(1)
+		}
+	}
+
 	given("an invalid ignoredNumber") {
 
 		it("throws a NumberFormatException") {
@@ -537,6 +546,23 @@ class MagicNumberSpec : Spek({
 			}
 		}
 
+		given("Issue#659 - false-negative reporting on unnamed argument when ignore is true") {
+
+			fun code(numberString: String) = compileContentForTest("""
+				data class Model(
+						val someVal: Int,
+						val other: String = "default"
+				)
+
+				var model = Model($numberString)
+			""")
+
+			it("should detect the argument") {
+				val rule = MagicNumber(TestConfig(mapOf("ignoreNamedArgument" to "true")))
+				assertThat(rule.lint(code("53"))).hasSize(1)
+			}
+		}
+
 		given("in function invocation") {
 			fun code(number: Number) = compileContentForTest("""
 				fun tested(someVal: Int, other: String = "default")
@@ -605,6 +631,30 @@ class MagicNumberSpec : Spek({
 				fun x() = 9 + 1
 				fun y(): Int { return 9 + 1 }"""
 			assertThat(MagicNumber().lint(code)).hasSize(2)
+		}
+	}
+
+	given("in-class declaration with default properties") {
+
+		it("reports no finding") {
+			val code = compileContentForTest("class SomeClassWithDefault(val defaultValue: Int = 10)")
+			assertThat(MagicNumber().lint(code)).isEmpty()
+		}
+
+		it("reports no finding for an explicit declaration") {
+			val code = compileContentForTest("class SomeClassWithDefault constructor(val defaultValue: Int = 10)")
+			assertThat(MagicNumber().lint(code)).isEmpty()
+		}
+	}
+
+	given("default properties in secondary constructor") {
+
+		it("reports no finding") {
+			val code = compileContentForTest("""
+				class SomeClassWithDefault {
+					constructor(val defaultValue: Int = 10) { }
+				}""")
+			assertThat(MagicNumber().lint(code)).isEmpty()
 		}
 	}
 })

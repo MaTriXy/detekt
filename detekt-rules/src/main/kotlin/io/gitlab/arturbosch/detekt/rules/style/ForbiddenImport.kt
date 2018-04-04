@@ -11,6 +11,8 @@ import io.gitlab.arturbosch.detekt.api.SplitPattern
 import org.jetbrains.kotlin.psi.KtImportList
 
 /**
+ * This rule allows to set a list of forbidden imports. This can be used to discourage the use of unstable, experimental
+ * or deprecated APIs. Detekt will then report all imports that are forbidden.
  *
  * <noncompliant>
  * package foo
@@ -39,7 +41,8 @@ class ForbiddenImport(config: Config = Config.empty) : Rule(config) {
 				.imports
 				.filterNot { it.isAllUnder }
 				.filter { forbiddenImports.contains(it.importedFqName?.asString() ?: "") }
-				.forEach { report(CodeSmell(issue, Entity.from(it), message = "")) }
+				.forEach { report(CodeSmell(issue, Entity.from(it), "The import " +
+						"${it.importedFqName!!.asString()} has been forbidden in the Detekt config.")) }
 	}
 
 	companion object {

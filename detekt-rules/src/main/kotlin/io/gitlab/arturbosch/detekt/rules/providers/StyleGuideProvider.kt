@@ -13,7 +13,7 @@ import io.gitlab.arturbosch.detekt.rules.style.ForbiddenImport
 import io.gitlab.arturbosch.detekt.rules.style.FunctionOnlyReturningConstant
 import io.gitlab.arturbosch.detekt.rules.style.LoopWithTooManyJumpStatements
 import io.gitlab.arturbosch.detekt.rules.style.MagicNumber
-import io.gitlab.arturbosch.detekt.rules.style.MemberNameEqualsClassName
+import io.gitlab.arturbosch.detekt.rules.style.MayBeConst
 import io.gitlab.arturbosch.detekt.rules.style.ModifierOrder
 import io.gitlab.arturbosch.detekt.rules.style.NestedClassesVisibility
 import io.gitlab.arturbosch.detekt.rules.style.NewLineAtEndOfFile
@@ -29,12 +29,12 @@ import io.gitlab.arturbosch.detekt.rules.style.ThrowsCount
 import io.gitlab.arturbosch.detekt.rules.style.UnnecessaryAbstractClass
 import io.gitlab.arturbosch.detekt.rules.style.UnnecessaryInheritance
 import io.gitlab.arturbosch.detekt.rules.style.UnnecessaryParentheses
+import io.gitlab.arturbosch.detekt.rules.style.UntilInsteadOfRangeTo
 import io.gitlab.arturbosch.detekt.rules.style.UnusedImports
+import io.gitlab.arturbosch.detekt.rules.style.UnusedPrivateMember
 import io.gitlab.arturbosch.detekt.rules.style.UseDataClass
 import io.gitlab.arturbosch.detekt.rules.style.UtilityClassWithPublicConstructor
 import io.gitlab.arturbosch.detekt.rules.style.WildcardImport
-import io.gitlab.arturbosch.detekt.rules.style.naming.NamingRules
-import io.gitlab.arturbosch.detekt.rules.style.optional.OptionalReturnKeyword
 import io.gitlab.arturbosch.detekt.rules.style.optional.OptionalUnit
 
 /**
@@ -63,8 +63,6 @@ class StyleGuideProvider : RuleSetProvider {
 				FunctionOnlyReturningConstant(config),
 				SpacingBetweenPackageAndImports(config),
 				LoopWithTooManyJumpStatements(config),
-				MemberNameEqualsClassName(config),
-				NamingRules(config),
 				SafeCast(config),
 				UnnecessaryAbstractClass(config),
 				UnnecessaryParentheses(config),
@@ -72,7 +70,6 @@ class StyleGuideProvider : RuleSetProvider {
 				UtilityClassWithPublicConstructor(config),
 				OptionalAbstractKeyword(config),
 				OptionalWhenBraces(config),
-				OptionalReturnKeyword(config),
 				OptionalUnit(config),
 				ProtectedMemberInFinalClass(config),
 				SerialVersionUIDInSerializableClass(config),
@@ -81,9 +78,12 @@ class StyleGuideProvider : RuleSetProvider {
 				DataClassContainsFunctions(config),
 				UseDataClass(config),
 				UnusedImports(config),
+				UnusedPrivateMember(config),
 				ExpressionBodySyntax(config),
 				NestedClassesVisibility(config),
-				RedundantVisibilityModifierRule(config)
+				RedundantVisibilityModifierRule(config),
+				UntilInsteadOfRangeTo(config),
+				MayBeConst(config)
 		))
 	}
 }

@@ -1,6 +1,7 @@
 package io.gitlab.arturbosch.detekt.rules.complexity
 
 import io.gitlab.arturbosch.detekt.api.Config
+import io.gitlab.arturbosch.detekt.api.Debt
 import io.gitlab.arturbosch.detekt.api.DetektVisitor
 import io.gitlab.arturbosch.detekt.api.Entity
 import io.gitlab.arturbosch.detekt.api.Issue
@@ -19,7 +20,12 @@ import org.jetbrains.kotlin.psi.KtTryExpression
 import org.jetbrains.kotlin.psi.KtWhenExpression
 
 /**
- * @configuration threshold - maximum nesting depth (default: 3)
+ * This rule reports excessive nesting depth in functions. Excessively nested code becomes harder to read and increases
+ * its hidden complexity. It might become harder to understand edge-cases of the function.
+ *
+ * Prefer extracting the nested code into well-named functions to make it easier to understand.
+ *
+ * @configuration threshold - maximum nesting depth (default: 4)
  *
  * @active since v1.0.0
  * @author Artur Bosch
@@ -31,7 +37,8 @@ class NestedBlockDepth(config: Config = Config.empty,
 	override val issue = Issue("NestedBlockDepth",
 			Severity.Maintainability,
 			"Excessive nesting leads to hidden complexity. " +
-					"Prefer extracting code to make it easier to understand.")
+					"Prefer extracting code to make it easier to understand.",
+			Debt.TWENTY_MINS)
 
 	override fun visitNamedFunction(function: KtNamedFunction) {
 		val visitor = FunctionDepthVisitor(threshold)
@@ -50,7 +57,7 @@ class NestedBlockDepth(config: Config = Config.empty,
 		internal var isTooDeep = false
 		private fun inc() {
 			depth++
-			if (depth > threshold) {
+			if (depth >= threshold) {
 				isTooDeep = true
 				if (depth > maxDepth) maxDepth = depth
 			}
@@ -61,7 +68,7 @@ class NestedBlockDepth(config: Config = Config.empty,
 		}
 
 		override fun visitIfExpression(expression: KtIfExpression) {
-			// Prevents else if (...) to count as two - #51C
+			// Prevents else if (...) to count as two - #51
 			if (expression.parent !is KtContainerNodeForControlStructureBody) {
 				inc()
 				super.visitIfExpression(expression)
@@ -104,8 +111,9 @@ class NestedBlockDepth(config: Config = Config.empty,
 				}
 			}
 		}
+	}
 
+	companion object {
+		const val DEFAULT_ACCEPTED_NESTING = 4
 	}
 }
-
-private const val DEFAULT_ACCEPTED_NESTING = 3

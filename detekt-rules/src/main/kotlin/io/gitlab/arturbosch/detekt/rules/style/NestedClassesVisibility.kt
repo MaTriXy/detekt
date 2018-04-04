@@ -9,10 +9,15 @@ import io.gitlab.arturbosch.detekt.api.Rule
 import io.gitlab.arturbosch.detekt.api.Severity
 import io.gitlab.arturbosch.detekt.rules.isInternal
 import io.gitlab.arturbosch.detekt.rules.isPublic
+import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtClass
+import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtEnumEntry
 
 /**
+ * Nested classes are often used to implement functionality local to the class it is nested in. Therefore it should
+ * not be public to other parts of the code.
+ * Prefer keeping nested classes `private`.
  *
  * <noncompliant>
  * internal class NestedClassesVisibility {
@@ -30,6 +35,7 @@ import org.jetbrains.kotlin.psi.KtEnumEntry
  *
  * @author Ivan Balaksha
  * @author schalkms
+ * @author Marvin Ramin
  */
 class NestedClassesVisibility(config: Config = Config.empty) : Rule(config) {
 
@@ -46,12 +52,14 @@ class NestedClassesVisibility(config: Config = Config.empty) : Rule(config) {
 
 	private fun checkDeclarations(klass: KtClass) {
 		klass.declarations
-				.filterIsInstance<KtClass>()
-				.filter { it.isPublic() && !it.isEnum() && it !is KtEnumEntry }
-				.forEach { report(CodeSmell(issue,
-						Entity.from(it),
+				.filterIsInstance<KtClassOrObject>()
+				.filter { it.isPublic() && it.isNoEnum() }
+				.forEach {
+					report(CodeSmell(issue, Entity.from(it),
 						"Nested types are often used for implementing private functionality. " +
 								"However the visibility of ${klass.name} makes it visible externally."))
-		}
+				}
 	}
+
+	private fun KtClassOrObject.isNoEnum() = !this.hasModifier(KtTokens.ENUM_KEYWORD) && this !is KtEnumEntry
 }

@@ -2,6 +2,7 @@ package io.gitlab.arturbosch.detekt.rules.style
 
 import io.gitlab.arturbosch.detekt.api.CodeSmell
 import io.gitlab.arturbosch.detekt.api.Config
+import io.gitlab.arturbosch.detekt.api.Debt
 import io.gitlab.arturbosch.detekt.api.Entity
 import io.gitlab.arturbosch.detekt.api.Issue
 import io.gitlab.arturbosch.detekt.api.Rule
@@ -15,6 +16,9 @@ import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.psiUtil.isAbstract
 
 /**
+ * This rule inspects `abstract` classes. In case an `abstract class` does not have any concrete members it should be
+ * refactored into an interfacse. Abstract classes which do not define any `abstract` members should instead be
+ * refactored into concrete classes.
  *
  * <noncompliant>
  * abstract class OnlyAbstractMembersInAbstractClass { // violation: no concrete members
@@ -42,11 +46,11 @@ class UnnecessaryAbstractClass(config: Config = Config.empty) : Rule(config) {
 			Issue("UnnecessaryAbstractClass", Severity.Style,
 					"An abstract class is unnecessary and can be refactored. " +
 							"An abstract class should have both abstract and concrete properties or functions. " +
-							noConcreteMember + " " +
-							noAbstractMember)
+							noConcreteMember + " " + noAbstractMember,
+					Debt.FIVE_MINS)
 
 	override fun visitClass(klass: KtClass) {
-		if (!klass.isInterface() && klass.isAbstract()) {
+		if (!klass.isInterface() && klass.isAbstract() && klass.superTypeListEntries.isEmpty()) {
 			val body = klass.getBody()
 			if (body != null) {
 				val namedMembers = body.children.filter { it is KtProperty || it is KtNamedFunction }

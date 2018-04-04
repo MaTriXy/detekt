@@ -2,6 +2,7 @@ package io.gitlab.arturbosch.detekt.rules.exceptions
 
 import io.gitlab.arturbosch.detekt.api.CodeSmell
 import io.gitlab.arturbosch.detekt.api.Config
+import io.gitlab.arturbosch.detekt.api.Debt
 import io.gitlab.arturbosch.detekt.api.Entity
 import io.gitlab.arturbosch.detekt.api.Issue
 import io.gitlab.arturbosch.detekt.api.Rule
@@ -44,15 +45,16 @@ class InstanceOfCheckForException(config: Config = Config.empty) : Rule(config) 
 
 	override val issue = Issue("InstanceOfCheckForException", Severity.CodeSmell,
 			"Instead of checking for a general exception type and checking for a specific exception type " +
-						"use multiple catch blocks.")
+						"use multiple catch blocks.",
+			Debt.TWENTY_MINS)
 
 	override fun visitCatchSection(catchClause: KtCatchClause) {
 		catchClause.catchBody?.collectByType<KtIsExpression>()?.forEach {
-			report(CodeSmell(issue, Entity.from(it), message = ""))
+			report(CodeSmell(issue, Entity.from(it), issue.description))
 		}
 		catchClause.catchBody?.collectByType<KtBinaryExpressionWithTypeRHS>()?.forEach {
 			if (KtPsiUtil.isUnsafeCast(it)) {
-				report(CodeSmell(issue, Entity.from(it), message = ""))
+				report(CodeSmell(issue, Entity.from(it), issue.description))
 			}
 		}
 	}

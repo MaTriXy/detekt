@@ -10,9 +10,11 @@ import io.gitlab.arturbosch.detekt.api.Severity
 import org.jetbrains.kotlin.com.intellij.psi.PsiComment
 
 /**
+ * This rule allows to set a list of comments which are forbidden in the codebase and should only be used during
+ * development. Offending code comments will then be reported.
  *
  * <noncompliant>
- * TODO:,FIXME:,STOPSHIP:
+ * // TODO:,FIXME:,STOPSHIP:
  * fun foo() { }
  * </noncompliant>
  *
@@ -41,7 +43,8 @@ class ForbiddenComment(config: Config = Config.empty) : Rule(config) {
 
 		values.forEach {
 			if (text.contains(it, ignoreCase = true)) {
-				report(CodeSmell(issue, Entity.from(comment), message = ""))
+				report(CodeSmell(issue, Entity.from(comment), "This comment contains text that has been " +
+						"defined as forbidden in detekt."))
 			}
 		}
 	}

@@ -2,6 +2,7 @@ package io.gitlab.arturbosch.detekt.rules.exceptions
 
 import io.gitlab.arturbosch.detekt.api.CodeSmell
 import io.gitlab.arturbosch.detekt.api.Config
+import io.gitlab.arturbosch.detekt.api.Debt
 import io.gitlab.arturbosch.detekt.api.Entity
 import io.gitlab.arturbosch.detekt.api.Issue
 import io.gitlab.arturbosch.detekt.api.Rule
@@ -15,10 +16,12 @@ import org.jetbrains.kotlin.psi.KtTypeReference
 
 /**
  * This rule reports all exceptions that are thrown in a `main` method.
+ * An exception should only be thrown if it can be handled by a "higher" function.
  *
  * <noncompliant>
  * fun main(args: Array<String>) {
- *     throw new IOException()
+ *     // ...
+ *     throw IOException() // exception should not be thrown here
  * }
  * </noncompliant>
  *
@@ -28,11 +31,11 @@ import org.jetbrains.kotlin.psi.KtTypeReference
 class ThrowingExceptionInMain(config: Config = Config.empty) : Rule(config) {
 
 	override val issue = Issue("ThrowingExceptionInMain", Severity.CodeSmell,
-			"The main method should not throw an exception.")
+			"The main method should not throw an exception.", Debt.TWENTY_MINS)
 
 	override fun visitNamedFunction(function: KtNamedFunction) {
 		if (isMainFunction(function) && hasArgsParameter(function.valueParameters) && containsThrowExpression(function)) {
-			report(CodeSmell(issue, Entity.from(function), message = ""))
+			report(CodeSmell(issue, Entity.from(function), issue.description))
 		}
 	}
 

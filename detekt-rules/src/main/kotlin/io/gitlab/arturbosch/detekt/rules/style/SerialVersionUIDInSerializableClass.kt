@@ -16,6 +16,8 @@ import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtProperty
 
 /**
+ * Classes which implement the `Serializable` interface should also correctly declare a `serialVersionUID`.
+ * This rule verifies that a `serialVersionUID` was correctly defined.
  *
  * <noncompliant>
  * class IncorrectSerializable : Serializable {
@@ -36,6 +38,7 @@ import org.jetbrains.kotlin.psi.KtProperty
  * </compliant>
  *
  * @author schalkms
+ * @author Marvin Ramin
  */
 class SerialVersionUIDInSerializableClass(config: Config = Config.empty) : Rule(config) {
 
@@ -50,7 +53,8 @@ class SerialVersionUIDInSerializableClass(config: Config = Config.empty) : Rule(
 		if (!klass.isInterface() && isImplementingSerializable(klass)) {
 			val companionObject = klass.companionObject()
 			if (companionObject == null || !hasCorrectSerialVersionUUID(companionObject)) {
-				report(CodeSmell(issue, Entity.from(klass), message = ""))
+				report(CodeSmell(issue, Entity.from(klass), "The class ${klass.nameAsSafeName} implements" +
+						"the Serializable interface and should thus define a serialVersionUID."))
 			}
 		}
 		super.visitClass(klass)
@@ -60,7 +64,8 @@ class SerialVersionUIDInSerializableClass(config: Config = Config.empty) : Rule(
 		if (!declaration.isCompanion()
 				&& isImplementingSerializable(declaration)
 				&& !hasCorrectSerialVersionUUID(declaration)) {
-			report(CodeSmell(issue, Entity.from(declaration), message = ""))
+			report(CodeSmell(issue, Entity.from(declaration),"The object ${declaration.nameAsSafeName} " +
+					"implements the Serializable interface and should thus define a serialVersionUID."))
 		}
 		super.visitObjectDeclaration(declaration)
 	}

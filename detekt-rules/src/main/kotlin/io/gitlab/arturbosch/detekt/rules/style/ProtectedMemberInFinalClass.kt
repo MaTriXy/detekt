@@ -15,11 +15,20 @@ import org.jetbrains.kotlin.psi.KtDeclaration
 import org.jetbrains.kotlin.psi.psiUtil.isProtected
 
 /**
+ * Kotlin classes are `final` by default. Thus classes which are not marked as `open` should not contain any `protected`
+ * members. Consider using `private` or `internal` modifiers instead.
  *
  * <noncompliant>
  * class ProtectedMemberInFinalClass {
  *     protected var i = 0
+ * }
  * </noncompliant>
+ *
+ * <compliant>
+ * class ProtectedMemberInFinalClass {
+ *     private var i = 0
+ * }
+ * </compliant>
  *
  * @author schalkms
  * @author Marvin Ramin
@@ -28,7 +37,7 @@ class ProtectedMemberInFinalClass(config: Config = Config.empty) : Rule(config) 
 
 	override val issue = Issue(javaClass.simpleName, Severity.Warning,
 			"Member with protected visibility in final class is private. Consider using private or internal as modifier.",
-			Debt.TEN_MINS)
+			Debt.FIVE_MINS)
 
 	private val visitor = DeclarationVisitor()
 
@@ -55,7 +64,7 @@ class ProtectedMemberInFinalClass(config: Config = Config.empty) : Rule(config) 
 
 		override fun visitDeclaration(dcl: KtDeclaration) {
 			if (dcl.isProtected() && !dcl.isOverridden()) {
-				report(CodeSmell(issue, Entity.from(dcl), message = ""))
+				report(CodeSmell(issue, Entity.from(dcl), issue.description))
 			}
 		}
 	}

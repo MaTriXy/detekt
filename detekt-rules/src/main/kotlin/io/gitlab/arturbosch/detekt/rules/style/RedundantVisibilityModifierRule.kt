@@ -2,6 +2,7 @@ package io.gitlab.arturbosch.detekt.rules.style
 
 import io.gitlab.arturbosch.detekt.api.CodeSmell
 import io.gitlab.arturbosch.detekt.api.Config
+import io.gitlab.arturbosch.detekt.api.Debt
 import io.gitlab.arturbosch.detekt.api.DetektVisitor
 import io.gitlab.arturbosch.detekt.api.Entity
 import io.gitlab.arturbosch.detekt.api.Issue
@@ -16,6 +17,7 @@ import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtProperty
 
 /**
+ * This rule checks for redundant visibility modifiers.
  *
  * <noncompliant>
  * public interface Foo { // public per default
@@ -40,7 +42,8 @@ class RedundantVisibilityModifierRule(config: Config = Config.empty) : Rule(conf
 			Severity.Style,
 			"Checks for redundant visibility modifiers. " +
 					"Public is the default visibility for classes. " +
-					"The public modifier is redundant.")
+					"The public modifier is redundant.",
+			Debt.FIVE_MINS)
 
 	private val classVisitor = ClassVisitor()
 	private val childrenVisitor = ChildrenVisitor()

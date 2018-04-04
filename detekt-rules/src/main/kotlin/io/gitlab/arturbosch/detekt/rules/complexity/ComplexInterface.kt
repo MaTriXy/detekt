@@ -1,6 +1,7 @@
 package io.gitlab.arturbosch.detekt.rules.complexity
 
 import io.gitlab.arturbosch.detekt.api.Config
+import io.gitlab.arturbosch.detekt.api.Debt
 import io.gitlab.arturbosch.detekt.api.Entity
 import io.gitlab.arturbosch.detekt.api.Issue
 import io.gitlab.arturbosch.detekt.api.Metric
@@ -15,6 +16,13 @@ import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtProperty
 
 /**
+ * Complex interfaces which contain too many functions and/or properties indicate that this interface is handling too
+ * many things at once. Interfaces should follow the single-responsibility principle to also encourage implementations
+ * of this interface to not handle too many things at once.
+ *
+ * Large interfaces should be split into smaller interfaces which have a clear responsibility and are easier
+ * to understand and implement.
+ *
  * @configuration threshold - maximum amount of definitions in an interface (default: 10)
  * @configuration includeStaticDeclarations - whether static declarations should be included (default: false)
  *
@@ -28,7 +36,8 @@ class ComplexInterface(config: Config = Config.empty,
 			"An interface contains too many functions and properties. " +
 					"Large classes tend to handle many things at once. " +
 					"An interface should have one responsibility. " +
-					"Split up large interfaces into smaller ones that are easier to understand.")
+					"Split up large interfaces into smaller ones that are easier to understand.",
+			Debt.TWENTY_MINS)
 
 	private val includeStaticDeclarations = valueOrDefault(INCLUDE_STATIC_DECLARATIONS, false)
 
@@ -39,7 +48,7 @@ class ComplexInterface(config: Config = Config.empty,
 			if (includeStaticDeclarations) {
 				size += countStaticDeclarations(klass.companionObject())
 			}
-			if (size > threshold) {
+			if (size >= threshold) {
 				report(ThresholdedCodeSmell(issue,
 						Entity.from(klass),
 						Metric("SIZE: ", size, threshold),
@@ -58,7 +67,7 @@ class ComplexInterface(config: Config = Config.empty,
 
 	companion object {
 		const val INCLUDE_STATIC_DECLARATIONS = "includeStaticDeclarations"
+		const val DEFAULT_LARGE_INTERFACE_COUNT = 10
 	}
 }
 
-private const val DEFAULT_LARGE_INTERFACE_COUNT = 10

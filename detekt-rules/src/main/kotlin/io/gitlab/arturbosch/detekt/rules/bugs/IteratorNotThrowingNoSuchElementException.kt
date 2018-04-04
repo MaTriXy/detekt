@@ -13,7 +13,7 @@ import io.gitlab.arturbosch.detekt.rules.bugs.util.throwsNoSuchElementExceptionT
 import org.jetbrains.kotlin.psi.KtClassOrObject
 
 /**
- * Reports implementations of the Iterator interface which do not throw a NoSuchElementException in the
+ * Reports implementations of the `Iterator` interface which do not throw a NoSuchElementException in the
  * implementation of the next() method. When there are no more elements to return an Iterator should throw a
  * NoSuchElementException.
  *
@@ -22,13 +22,23 @@ import org.jetbrains.kotlin.psi.KtClassOrObject
  * <noncompliant>
  * class MyIterator : Iterator<String> {
  *
- *     public Integer next() {
- *         if (!this.hasNext()) {
- *             throw NoSuchElementException()
- *         }
+ *     override fun next(): String {
+ *         return ""
  *     }
  * }
  * </noncompliant>
+ *
+ * <compliant>
+ * class MyIterator : Iterator<String> {
+ *
+ *     override fun next(): String {
+ *         if (!this.hasNext()) {
+ *             throw NoSuchElementException()
+ *         }
+ *         // ...
+ *     }
+ * }
+ * </compliant>
  *
  * @author schalkms
  * @author Marvin Ramin

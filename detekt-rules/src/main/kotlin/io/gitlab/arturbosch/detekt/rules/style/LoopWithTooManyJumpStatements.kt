@@ -15,6 +15,8 @@ import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtLoopExpression
 
 /**
+ * Loops which contain multiple `break` or `continue` statements are hard to read and understand.
+ * To increase readability they should be refactored into simpler loops.
  *
  * <noncompliant>
  * val strs = listOf("foo, bar")
@@ -42,7 +44,7 @@ class LoopWithTooManyJumpStatements(config: Config = Config.empty) : Rule(config
 
 	override fun visitLoopExpression(loopExpression: KtLoopExpression) {
 		if (countBreakAndReturnStatements(loopExpression.body) > maxJumpCount) {
-			report(CodeSmell(issue, Entity.from(loopExpression), message = ""))
+			report(CodeSmell(issue, Entity.from(loopExpression), issue.description))
 		}
 		super.visitLoopExpression(loopExpression)
 	}

@@ -8,13 +8,23 @@ import org.jetbrains.spek.subject.SubjectSpek
 import kotlin.test.assertEquals
 
 class MethodOverloadingSpec : SubjectSpek<MethodOverloading>({
-	subject { MethodOverloading(threshold = 2) }
+
+	subject { MethodOverloading(threshold = 3) }
 
 	given("several overloaded methods") {
 
-		it("reports overloaded method count over threshold") {
+		it("reports overloaded methods which exceed the threshold") {
 			subject.lint(Case.OverloadedMethods.path())
 			assertEquals(3, subject.findings.size)
+		}
+
+		it("does not report overloaded methods which do not exceed the threshold") {
+			subject.lint("""
+				class Test {
+					fun x() { }
+					fun x(i: Int) { }
+				}""")
+			assertEquals(0, subject.findings.size)
 		}
 	}
 })

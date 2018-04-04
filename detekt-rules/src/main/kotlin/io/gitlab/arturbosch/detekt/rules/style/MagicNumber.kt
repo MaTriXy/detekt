@@ -18,14 +18,49 @@ import org.jetbrains.kotlin.psi.KtEnumEntry
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtOperationReferenceExpression
+import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtPrefixExpression
+import org.jetbrains.kotlin.psi.KtPrimaryConstructor
 import org.jetbrains.kotlin.psi.KtProperty
 import org.jetbrains.kotlin.psi.KtReturnExpression
+import org.jetbrains.kotlin.psi.KtSecondaryConstructor
 import org.jetbrains.kotlin.psi.KtValueArgument
 import org.jetbrains.kotlin.psi.psiUtil.getNonStrictParentOfType
 import java.util.Locale
 
 /**
+ * This rule detects and reports usages of magic numbers in the code. Prefer defining constants with clear names
+ * describing what the magic number means.
+ *
+ * <noncompliant>
+ * class User {
+ *
+ *     fun checkName(name: String) {
+ *         if (name.length > 42) {
+ *             throw IllegalArgumentException("username is too long")
+ *         }
+ *         // ...
+ *     }
+ * }
+ * </noncompliant>
+ *
+ * <compliant>
+ *
+ * class User {
+ *
+ *     fun checkName(name: String) {
+ *         if (name.length > MAX_USERNAME_SIZE) {
+ *             throw IllegalArgumentException("username is too long")
+ *         }
+ *         // ...
+ *     }
+ *
+ *     companion object {
+ *         private const val MAX_USERNAME_SIZE = 42
+ *     }
+ * }
+ * </compliant>
+ *
  * @configuration ignoreNumbers - numbers which do not count as magic numbers (default: '-1,0,1,2')
  * @configuration ignoreHashCodeFunction - whether magic numbers in hashCode functions should be ignored
  * (default: false)
@@ -68,7 +103,8 @@ class MagicNumber(config: Config = Config.empty) : Rule(config) {
 			valueOrDefault(IGNORE_COMPANION_OBJECT_PROPERTY_DECLARATION, true)
 
 	override fun visitConstantExpression(expression: KtConstantExpression) {
-		if (isIgnoredByConfig(expression) || expression.isPartOfFunctionReturnConstant()) {
+		if (isIgnoredByConfig(expression) || expression.isPartOfFunctionReturnConstant()
+				|| expression.isPartOfConstructor()) {
 			return
 		}
 
@@ -81,7 +117,8 @@ class MagicNumber(config: Config = Config.empty) : Rule(config) {
 
 		val number = parseAsDoubleOrNull(rawNumber) ?: return
 		if (!ignoredNumbers.contains(number)) {
-			report(CodeSmell(issue, Entity.from(expression), message = ""))
+			report(CodeSmell(issue, Entity.from(expression), "This expression contains a magic number." +
+					" Consider defining it to a well named constant."))
 		}
 	}
 
@@ -92,9 +129,7 @@ class MagicNumber(config: Config = Config.empty) : Rule(config) {
 		ignoreAnnotation && expression.isPartOf(KtAnnotationEntry::class) -> true
 		ignoreHashCodeFunction && expression.isPartOfHashCode() -> true
 		ignoreEnums && expression.isPartOf(KtEnumEntry::class) -> true
-		ignoreNamedArgument
-				&& expression.isPartOf(KtValueArgument::class)
-				&& expression.isPartOf(KtCallExpression::class) -> true
+		ignoreNamedArgument && expression.isNamedArgument() -> true
 		else -> false
 	}
 
@@ -139,8 +174,18 @@ class MagicNumber(config: Config = Config.empty) : Rule(config) {
 	}
 }
 
+private fun KtConstantExpression.isNamedArgument() =
+		(parent is KtValueArgument
+				&& (parent as? KtValueArgument)?.isNamed() == true
+				&& isPartOf(KtCallExpression::class))
+
 private fun KtConstantExpression.isPartOfFunctionReturnConstant() =
 		parent is KtNamedFunction || (parent is KtReturnExpression && parent.parent.children.size == 1)
+
+private fun KtConstantExpression.isPartOfConstructor(): Boolean {
+	return parent is KtParameter
+			&& parent.parent.parent is KtPrimaryConstructor || parent.parent.parent is KtSecondaryConstructor
+}
 
 private fun KtConstantExpression.isPartOfHashCode(): Boolean {
 	val containingFunction = getNonStrictParentOfType(KtNamedFunction::class.java)

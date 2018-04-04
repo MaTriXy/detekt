@@ -12,6 +12,7 @@ import org.jetbrains.kotlin.psi.KtFile
  * two predefined (preVisit/postVisit) functions which can be overridden to setup/teardown additional data.
  *
  * @author Artur Bosch
+ * @author Marvin Ramin
  */
 abstract class Rule(override val config: Config = Config.empty,
 					ruleContext: Context = DefaultContext()) :
@@ -20,5 +21,5 @@ abstract class Rule(override val config: Config = Config.empty,
 	abstract val issue: Issue
 	final override val id: String by lazy(LazyThreadSafetyMode.NONE) { issue.id }
 
-	override fun visitCondition(root: KtFile) = active && !root.isSuppressedBy(id)
+	override fun visitCondition(root: KtFile) = active && !root.isSuppressedBy(id, issue.aliases)
 }

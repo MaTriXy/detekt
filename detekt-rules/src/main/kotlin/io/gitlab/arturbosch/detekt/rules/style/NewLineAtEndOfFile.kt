@@ -10,6 +10,8 @@ import io.gitlab.arturbosch.detekt.api.Severity
 import org.jetbrains.kotlin.psi.KtFile
 
 /**
+ * This rule reports files which do not end with a line separator.
+ *
  * @active since v1.0.0
  * @author Marvin Ramin
  */
@@ -23,7 +25,8 @@ class NewLineAtEndOfFile(config: Config = Config.empty) : Rule(config) {
 	override fun visitKtFile(file: KtFile) {
 		val text = file.text
 		if (text.isNotEmpty() && text.last() != '\n') {
-			report(CodeSmell(issue, Entity.from(file, text.length - 1), message = ""))
+			report(CodeSmell(issue, Entity.from(file, text.length - 1),
+					"The file ${file.name} is not ending with a new line."))
 		}
 	}
 

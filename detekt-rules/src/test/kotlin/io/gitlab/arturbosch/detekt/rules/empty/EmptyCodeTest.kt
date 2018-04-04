@@ -3,6 +3,7 @@ package io.gitlab.arturbosch.detekt.rules.empty
 import io.gitlab.arturbosch.detekt.api.Config
 import io.gitlab.arturbosch.detekt.api.Rule
 import io.gitlab.arturbosch.detekt.rules.Case
+import io.gitlab.arturbosch.detekt.test.TestConfig
 import io.gitlab.arturbosch.detekt.test.compileForTest
 import io.gitlab.arturbosch.detekt.test.lint
 import org.assertj.core.api.Assertions.assertThat
@@ -18,6 +19,30 @@ class EmptyCodeTest {
 	@Test
 	fun findsEmptyCatch() {
 		test { EmptyCatchBlock(Config.empty) }
+	}
+
+	@Test
+	fun doesNotReportIgnoredOrExpectedException() {
+		val code = """
+			fun f() {
+				try {
+                } catch (ignore: IOException) {
+				} catch (expected: Exception) {
+				}
+			}"""
+		assertThat(EmptyCatchBlock(Config.empty).lint(code)).hasSize(0)
+	}
+
+	@Test
+	fun doesNotReportEmptyCatchWithConfig() {
+		val code = """
+			fun f() {
+				try {
+				} catch (foo: MyException) {
+				}
+			}"""
+		val config = TestConfig(mapOf(EmptyCatchBlock.ALLOWED_EXCEPTION_NAME_REGEX to "foo"))
+		assertThat(EmptyCatchBlock(config).lint(code)).hasSize(0)
 	}
 
 	@Test
@@ -78,9 +103,15 @@ class EmptyCodeTest {
 	@Test
 	fun findsEmptyDefaultConstructor() {
 		val rule = EmptyDefaultConstructor(Config.empty)
-		val text = compileForTest(Case.EmptyDefaultConstructor.path()).text
-		rule.lint(text)
-		assertThat(rule.findings).hasSize(2)
+		val text = compileForTest(Case.EmptyDefaultConstructorPositive.path()).text
+		assertThat(rule.lint(text)).hasSize(2)
+	}
+
+	@Test
+	fun doesNotFindEmptyDefaultConstructor() {
+		val rule = EmptyDefaultConstructor(Config.empty)
+		val text = compileForTest(Case.EmptyDefaultConstructorNegative.path()).text
+		assertThat(rule.lint(text)).isEmpty()
 	}
 
 	private fun test(block: () -> Rule) {

@@ -12,11 +12,12 @@ import org.jetbrains.kotlin.psi.KtBlockExpression
 import org.jetbrains.kotlin.psi.KtWhenExpression
 
 /**
+ * This rule reports unnecessary braces in when expressions. These optional braces should be removed.
  *
  * <noncompliant>
  * val i = 1
  * when (1) {
- *     1 -> { println("one") } // unnecessary curly braces
+ *     1 -> { println("one") } // unnecessary curly braces since there is only one statement
  *     else -> println("else")
  * }
  * </noncompliant>
@@ -30,17 +31,20 @@ import org.jetbrains.kotlin.psi.KtWhenExpression
  * </compliant>
  *
  * @author schalkms
+ * @author Marvin Ramin
  */
 class OptionalWhenBraces(config: Config = Config.empty) : Rule(config) {
 
-	override val issue: Issue = Issue(javaClass.simpleName, Severity.Style,
-			"Optional braces in when expression", Debt.FIVE_MINS)
+	override val issue: Issue = Issue(javaClass.simpleName,
+			Severity.Style,
+			"Optional braces in when expression",
+			Debt.FIVE_MINS)
 
 	override fun visitWhenExpression(expression: KtWhenExpression) {
 		for (entry in expression.entries) {
 			val blockExpression = entry.expression as? KtBlockExpression
 			if (hasOneStatement(blockExpression) && hasOptionalBrace(blockExpression)) {
-				report(CodeSmell(issue, Entity.from(entry), message = ""))
+				report(CodeSmell(issue, Entity.from(entry), issue.description))
 			}
 		}
 	}

@@ -11,15 +11,18 @@ import io.gitlab.arturbosch.detekt.rules.isPublic
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassInitializer
 import org.jetbrains.kotlin.psi.KtDeclaration
+import org.jetbrains.kotlin.psi.KtDelegatedSuperTypeEntry
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
 import org.jetbrains.kotlin.psi.KtPrimaryConstructor
 import org.jetbrains.kotlin.psi.KtSecondaryConstructor
 
 /**
- *
+ * A class which only contains utility functions and no concrete implementation can be refactored into an `object`.
+ * 
  * <noncompliant>
- * class UtilityClassWithPublicConstructor {
+ * class UtilityClass {
  *
+ *     // public constructor here
  *     constructor() {
  *         // ...
  *     }
@@ -45,6 +48,7 @@ import org.jetbrains.kotlin.psi.KtSecondaryConstructor
  *
  * @author schalkms
  * @author Marvin Ramin
+ * @author Artur Bosch
  */
 class UtilityClassWithPublicConstructor(config: Config = Config.empty) : Rule(config) {
 
@@ -55,14 +59,17 @@ class UtilityClassWithPublicConstructor(config: Config = Config.empty) : Rule(co
 			Debt.FIVE_MINS)
 
 	override fun visitClass(klass: KtClass) {
-		if (!klass.isInterface()) {
+		if (!klass.isInterface() && !klass.hasDelegates() && hasPublicConstructor(klass)) {
 			val declarations = klass.getBody()?.declarations
-			if (hasOnlyUtilityClassMembers(declarations) && hasPublicConstructor(klass)) {
-				report(CodeSmell(issue, Entity.from(klass), message = ""))
+			if (hasOnlyUtilityClassMembers(declarations)) {
+				report(CodeSmell(issue, Entity.from(klass), "The class ${klass.nameAsSafeName} only contains" +
+						"utility functions. Consider defining it as an object."))
 			}
 		}
 		super.visitClass(klass)
 	}
+
+	private fun KtClass.hasDelegates() = superTypeListEntries.any { it is KtDelegatedSuperTypeEntry }
 
 	private fun hasOnlyUtilityClassMembers(declarations: List<KtDeclaration>?): Boolean {
 		return declarations?.all {

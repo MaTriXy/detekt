@@ -97,6 +97,12 @@ cleans up the code.
 
 **Debt**: 5min
 
+#### Configuration options:
+
+* `includeLineWrapping` (default: `false`)
+
+   include return statements with line wraps in it
+
 #### Noncompliant Code:
 
 ```kotlin
@@ -109,6 +115,13 @@ fun stuff(): Int {
 
 ```kotlin
 fun stuff() = 5
+
+fun stuff() {
+    return
+        moreStuff()
+            .getStuff()
+            .stuffStuff()
+}
 ```
 
 ### ForbiddenComment
@@ -292,6 +305,29 @@ class User {
 }
 ```
 
+### MandatoryBracesIfStatements
+
+This rule detects multi-line `if` statements which do not have braces.
+Adding braces would improve readability and avoid possible errors.
+
+**Severity**: Style
+
+**Debt**: 5min
+
+#### Noncompliant Code:
+
+```kotlin
+val i = 1
+if (i > 0)
+    println(i)
+```
+
+#### Compliant Code:
+
+```kotlin
+val x = if (condition) 5 else 4
+```
+
 ### MaxLineLength
 
 This rule reports lines of code which exceed a defined maximum line length.
@@ -316,6 +352,10 @@ in the codebase will help make the code more uniform.
 * `excludeImportStatements` (default: `false`)
 
    if import statements should be ignored
+
+* `excludeCommentStatements` (default: `false`)
+
+   if comment statements should be ignored
 
 ### MayBeConst
 
@@ -483,6 +523,28 @@ when (1) {
     1 -> println("one")
     else -> println("else")
 }
+```
+
+### PreferToOverPairSyntax
+
+This rule detects the usage of the Pair constructor to create pairs of values.
+
+Using <value1> to <value2> is preferred.
+
+**Severity**: Style
+
+**Debt**: 5min
+
+#### Noncompliant Code:
+
+```kotlin
+val pair = Pair(1, 2)
+```
+
+#### Compliant Code:
+
+```kotlin
+val pair = 1 to 2
 ```
 
 ### ProtectedMemberInFinalClass
@@ -828,6 +890,12 @@ can lead to confusion and potential bugs.
 **Severity**: Maintainability
 
 **Debt**: 5min
+
+#### Configuration options:
+
+* `allowedNames` (default: `"(_|ignored|expected)"`)
+
+   unused private member names matching this regex are ignored
 
 ### UseDataClass
 

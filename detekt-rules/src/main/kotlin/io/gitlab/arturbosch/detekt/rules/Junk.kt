@@ -3,14 +3,18 @@ package io.gitlab.arturbosch.detekt.rules
 import io.gitlab.arturbosch.detekt.api.DetektVisitor
 import org.jetbrains.kotlin.com.intellij.openapi.util.Key
 import org.jetbrains.kotlin.com.intellij.psi.PsiComment
+import org.jetbrains.kotlin.com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.lexer.KtTokens
 import org.jetbrains.kotlin.psi.KtBlockExpression
 import org.jetbrains.kotlin.psi.KtCallExpression
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
+import org.jetbrains.kotlin.psi.KtConstantExpression
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtExpression
 import org.jetbrains.kotlin.psi.KtObjectDeclaration
+import org.jetbrains.kotlin.psi.KtStringTemplateExpression
+import org.jetbrains.kotlin.psi.KtVariableDeclaration
 import org.jetbrains.kotlin.psi.psiUtil.getCallNameExpression
 import org.jetbrains.kotlin.psi.psiUtil.getNonStrictParentOfType
 
@@ -30,6 +34,11 @@ fun KtCallExpression.isUsedForNesting(): Boolean = when (getCallNameExpression()
 	else -> false
 }
 
+fun KtVariableDeclaration.hasConstModifier(): Boolean {
+	val modifierList = this.modifierList
+	return modifierList != null && modifierList.hasModifier(KtTokens.CONST_KEYWORD)
+}
+
 fun KtBlockExpression.hasCommentInside(): Boolean {
 	val commentKey = Key<Boolean>("comment")
 	this.acceptChildren(object : DetektVisitor() {
@@ -39,6 +48,12 @@ fun KtBlockExpression.hasCommentInside(): Boolean {
 	})
 	return getUserData(commentKey) == true
 }
+
+fun getIntValueForPsiElement(element: PsiElement): Int? {
+	return (element as? KtConstantExpression)?.text?.toIntOrNull()
+}
+
+fun KtStringTemplateExpression.plainText() = text.substring(1, text.length - 1)
 
 fun KtClass.companionObject() = this.companionObjects.singleOrNull { it.isCompanion() }
 

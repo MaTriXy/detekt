@@ -11,7 +11,7 @@ Rules in this rule set report issues related to how code throws and handles Exce
 ### ExceptionRaisedInUnexpectedLocation
 
 This rule allows to define functions which should never throw an exception. If a function exists that does throw
-an exception it will be reported. By default this rule is checking for `toString`, `hashCode, `equals` and
+an exception it will be reported. By default this rule is checking for `toString`, `hashCode`, `equals` and
 `finalize`. This rule is configurable via the `methodNames` configuration to change the list of functions which
 should not throw any exceptions.
 
@@ -134,6 +134,7 @@ fun bar() {
 ### RethrowCaughtException
 
 This rule reports all exceptions that are caught and then later re-thrown without modification.
+It ignores caught exception that are rethrown if there is work done before that.
 
 **Severity**: CodeSmell
 
@@ -148,6 +149,12 @@ fun foo() {
     } catch (e: IOException) {
         throw e
     }
+    try {
+        // ...
+    } catch (e: IOException) {
+        print(e.message)
+        throw e
+    }
 }
 ```
 
@@ -159,6 +166,12 @@ fun foo() {
         // ...
     } catch (e: IOException) {
         throw MyException(e)
+    }
+    try {
+        // ...
+    } catch (e: IOException) {
+        print(e)
+        throw e
     }
 }
 ```

@@ -6,6 +6,7 @@ import io.gitlab.arturbosch.detekt.api.Finding
 import io.gitlab.arturbosch.detekt.api.RuleSetProvider
 import io.gitlab.arturbosch.detekt.api.toMergedMap
 import org.jetbrains.kotlin.psi.KtFile
+import java.util.concurrent.ExecutorService
 
 /**
  * @author Artur Bosch
@@ -16,8 +17,10 @@ class Detektor(settings: ProcessingSettings,
 
 	private val config: Config = settings.config
 	private val testPattern: TestPattern = settings.loadTestPattern()
+	private val executor: ExecutorService? = settings.executorService
+	private val logger = settings.errorPrinter ?: System.err
 
-	fun run(ktFiles: List<KtFile>): Map<String, List<Finding>> = withExecutor {
+	fun run(ktFiles: List<KtFile>): Map<String, List<Finding>> = withExecutor(executor) {
 
 		val futures = ktFiles.map { file ->
 			runAsync {
@@ -25,6 +28,12 @@ class Detektor(settings: ProcessingSettings,
 				file.analyze().apply {
 					processors.forEach { it.onProcessComplete(file, this) }
 				}
+			}.exceptionally {
+				logger.println("\n\nAnalyzing '${file.absolutePath()}' led to an exception.\n"
+						+ "Running detekt '${whichDetekt()}' on Java '${whichJava()}' on OS '${whichOS()}'.\n"
+						+ "Please create an issue and report this exception.")
+				it.stackTrace.forEach { logger.println(it) }
+				emptyMap()
 			}
 		}
 

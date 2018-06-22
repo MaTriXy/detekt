@@ -31,7 +31,26 @@ style:
   SpacingBetweenPackageAndImports:
     active: true
 
-
 potential-bugs:
   UnsafeCast:
     active: true
+
+formatting:
+  active: true
+  android: false
+  autoCorrect: false
+  ChainWrapping:
+    active: true
+    autoCorrect: true
+  Indentation:
+    active: false
+    autoCorrect: true
+    indentSize: 4
+    continuationIndentSize: 4
+  ParameterListWrapping:
+    active: false
+    autoCorrect: true
+    indentSize: 4
+  ImportOrdering:
+    active: false
+    autoCorrect: true

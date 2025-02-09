@@ -1,18 +1,20 @@
 package io.gitlab.arturbosch.detekt.formatting.wrappers
 
-import com.github.shyiko.ktlint.ruleset.standard.NoLineBreakAfterElseRule
+import com.pinterest.ktlint.ruleset.standard.rules.NoLineBreakAfterElseRule
+import io.gitlab.arturbosch.detekt.api.ActiveByDefault
 import io.gitlab.arturbosch.detekt.api.Config
+import io.gitlab.arturbosch.detekt.api.internal.AutoCorrectable
 import io.gitlab.arturbosch.detekt.formatting.FormattingRule
 
 /**
- * See https://ktlint.github.io for documentation.
- *
- * @active since v1.0.0
- * @autoCorrect since v1.0.0
- * @author Artur Bosch
+ * See [ktlint docs](https://pinterest.github.io/ktlint/<ktlintVersion/>/rules/standard/#no-line-break-after-else) for documentation.
  */
-class NoLineBreakAfterElse(config: Config) : FormattingRule(config) {
+@ActiveByDefault(since = "1.0.0")
+@AutoCorrectable(since = "1.0.0")
+class NoLineBreakAfterElse(config: Config) : FormattingRule(
+    config,
+    "Reports line breaks after else"
+) {
 
-	override val wrapping = NoLineBreakAfterElseRule()
-	override val issue = issueFor("Reports line breaks after else")
+    override val wrapping = NoLineBreakAfterElseRule()
 }

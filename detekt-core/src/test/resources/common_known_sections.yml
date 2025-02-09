@@ -1,0 +1,13 @@
+config:
+  validation: true
+  excludes: 'test>.*'
+
+processors:
+  active: true
+  exclude:
+    - 'DetektProgressListener'
+
+console-reports:
+  active: true
+  exclude:
+    - 'FileBasedFindingsReport'

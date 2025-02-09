@@ -1,18 +1,20 @@
 package io.gitlab.arturbosch.detekt.formatting.wrappers
 
-import com.github.shyiko.ktlint.ruleset.standard.NoBlankLineBeforeRbraceRule
+import com.pinterest.ktlint.ruleset.standard.rules.NoBlankLineBeforeRbraceRule
+import io.gitlab.arturbosch.detekt.api.ActiveByDefault
 import io.gitlab.arturbosch.detekt.api.Config
+import io.gitlab.arturbosch.detekt.api.internal.AutoCorrectable
 import io.gitlab.arturbosch.detekt.formatting.FormattingRule
 
 /**
- * See https://ktlint.github.io for documentation.
- *
- * @active since v1.0.0
- * @autoCorrect since v1.0.0
- * @author Artur Bosch
+ * See [ktlint docs](https://pinterest.github.io/ktlint/<ktlintVersion/>/rules/standard/#no-blank-lines-before) for documentation.
  */
-class NoBlankLineBeforeRbrace(config: Config) : FormattingRule(config) {
+@ActiveByDefault(since = "1.0.0")
+@AutoCorrectable(since = "1.0.0")
+class NoBlankLineBeforeRbrace(config: Config) : FormattingRule(
+    config,
+    "Detects blank lines before rbraces"
+) {
 
-	override val wrapping = NoBlankLineBeforeRbraceRule()
-	override val issue = issueFor("Detects blank lines before rbraces")
+    override val wrapping = NoBlankLineBeforeRbraceRule()
 }

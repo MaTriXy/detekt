@@ -1,18 +1,33 @@
 package io.gitlab.arturbosch.detekt.formatting.wrappers
 
-import com.github.shyiko.ktlint.ruleset.standard.NoWildcardImportsRule
+import com.pinterest.ktlint.rule.engine.core.api.editorconfig.EditorConfigProperty
+import com.pinterest.ktlint.ruleset.standard.rules.NoWildcardImportsRule
+import io.gitlab.arturbosch.detekt.api.ActiveByDefault
 import io.gitlab.arturbosch.detekt.api.Config
+import io.gitlab.arturbosch.detekt.api.Configuration
+import io.gitlab.arturbosch.detekt.api.config
 import io.gitlab.arturbosch.detekt.formatting.FormattingRule
 
 /**
- * See https://ktlint.github.io/#rule-import for documentation.
- *
- * @active since v1.0.0
- * @autoCorrect since v1.0.0
- * @author Artur Bosch
+ * See [ktlint docs](https://pinterest.github.io/ktlint/<ktlintVersion/>/rules/standard/#no-wildcard-imports) for documentation.
  */
-class NoWildcardImports(config: Config) : FormattingRule(config) {
+@ActiveByDefault(since = "1.0.0")
+class NoWildcardImports(config: Config) : FormattingRule(
+    config,
+    "Detects wildcard imports"
+) {
 
-	override val wrapping = NoWildcardImportsRule()
-	override val issue = issueFor("Detects wildcast import usages")
+    override val wrapping = NoWildcardImportsRule()
+
+    @Configuration("Defines allowed wildcard imports")
+    private val packagesToUseImportOnDemandProperty by config(ALLOWED_WILDCARD_IMPORTS)
+
+    override fun overrideEditorConfigProperties(): Map<EditorConfigProperty<*>, String> =
+        mapOf(
+            NoWildcardImportsRule.IJ_KOTLIN_PACKAGES_TO_USE_IMPORT_ON_DEMAND to packagesToUseImportOnDemandProperty
+        )
+
+    companion object {
+        private const val ALLOWED_WILDCARD_IMPORTS = "java.util.*,kotlinx.android.synthetic.**"
+    }
 }

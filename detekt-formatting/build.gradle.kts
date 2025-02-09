@@ -1,34 +1,50 @@
-import java.util.concurrent.Callable
+plugins {
+    id("module")
+}
 
-configurations.implementation.extendsFrom(configurations.kotlinImplementation)
-configurations.testImplementation.extendsFrom(configurations.kotlinTest)
-configurations.compile.isTransitive = false
-
-val ktlintVersion by project
-val junitPlatformVersion by project
-val spekVersion by project
+val extraDepsToPackage: Configuration by configurations.creating
 
 dependencies {
-	compileOnly(project(":detekt-api"))
-	compile("com.github.shyiko.ktlint:ktlint-ruleset-standard:$ktlintVersion") {
-		exclude(group = "org.jetbrains.kotlin")
-	}
-	compile("com.github.shyiko.ktlint:ktlint-core:$ktlintVersion") {
-		exclude(group = "org.jetbrains.kotlin")
-	}
+    compileOnly(projects.detektApi)
+    compileOnly(projects.detektPsiUtils)
+    implementation(libs.ktlint.rulesetStandard) {
+        exclude(group = "org.jetbrains.kotlin")
+    }
 
-	testCompile(project(":detekt-api"))
-	testCompile(project(":detekt-test"))
-	testRuntime("org.junit.platform:junit-platform-launcher:$junitPlatformVersion")
-	testRuntime("org.junit.platform:junit-platform-console:$junitPlatformVersion")
-	testRuntime("org.jetbrains.spek:spek-junit-platform-engine:$spekVersion")
+    runtimeOnly(libs.slf4j.api)
+
+    testImplementation(projects.detektTest)
+    testImplementation(libs.assertj.core)
+    testImplementation(libs.classgraph)
+
+    testRuntimeOnly(libs.slf4j.nop)
+    extraDepsToPackage(libs.slf4j.nop)
 }
 
-tasks.withType<Jar> {
-	from(Callable {
-		configurations.compile.map({
-			if (it.isDirectory) it else zipTree(it)
-		})
-	})
-}
+consumeGeneratedConfig(
+    fromProject = projects.detektGenerator,
+    fromConfiguration = "generatedFormattingConfig",
+    forTask = tasks.sourcesJar
+)
+consumeGeneratedConfig(
+    fromProject = projects.detektGenerator,
+    fromConfiguration = "generatedFormattingConfig",
+    forTask = tasks.processResources
+)
 
+val depsToPackage = setOf(
+    "org.ec4j.core",
+    "com.pinterest.ktlint",
+    "io.github.oshai",
+)
+
+tasks.jar {
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE // allow duplicates
+    dependsOn(configurations.runtimeClasspath, extraDepsToPackage)
+    from(
+        configurations.runtimeClasspath.get()
+            .filter { dependency -> depsToPackage.any { it in dependency.toString() } }
+            .map { if (it.isDirectory) it else zipTree(it) },
+        extraDepsToPackage.map { zipTree(it) },
+    )
+}

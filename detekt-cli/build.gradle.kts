@@ -1,38 +1,125 @@
-application {
-	mainClassName = "io.gitlab.arturbosch.detekt.cli.Main"
+import org.apache.tools.ant.filters.ReplaceTokens
+import java.io.ByteArrayOutputStream
+
+plugins {
+    id("com.gradleup.shadow") version "8.3.6"
+    id("module")
+    id("application")
 }
 
-val kotlinVersion by project
-val junitPlatformVersion by project
-val spekVersion by project
-val jcommanderVersion by project
-val detektVersion by project
+application {
+    mainClass = "io.gitlab.arturbosch.detekt.cli.Main"
+}
 
-// implementation.extendsFrom kotlin is not enough for using cli in a gradle task - #58
-configurations.testImplementation.extendsFrom(configurations.kotlinTest)
+val pluginsJar by configurations.dependencyScope("pluginsJar") {
+    isTransitive = false
+}
+
+val pluginsJarFiles by configurations.resolvable("pluginsJarFiles") {
+    extendsFrom(pluginsJar)
+}
 
 dependencies {
-	implementation(project(":detekt-core"))
-	implementation(project(":detekt-rules"))
-	implementation("com.beust:jcommander:$jcommanderVersion")
-	implementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:$kotlinVersion")
+    implementation(libs.jcommander)
+    implementation(projects.detektTooling)
+    implementation(projects.detektUtils)
+    implementation(libs.kotlin.compilerEmbeddable) {
+        version {
+            strictly(libs.versions.kotlin.get())
+        }
+    }
+    runtimeOnly(projects.detektCore)
+    runtimeOnly(projects.detektRules)
+    runtimeOnly(projects.detektReportHtml)
+    runtimeOnly(projects.detektReportMd)
+    runtimeOnly(projects.detektReportSarif)
+    runtimeOnly(projects.detektReportXml)
 
-	testImplementation(project(":detekt-test"))
-	testRuntimeOnly("org.junit.platform:junit-platform-launcher:$junitPlatformVersion")
-	testRuntimeOnly("org.junit.platform:junit-platform-console:$junitPlatformVersion")
-	testRuntimeOnly("org.jetbrains.spek:spek-junit-platform-engine:$spekVersion")
+    testImplementation(projects.detektTestUtils)
+    testImplementation(libs.assertj.core)
+    testRuntimeOnly(projects.detektFormatting)
+
+    pluginsJar(projects.detektFormatting)
+    pluginsJar(projects.detektRulesLibraries)
+    pluginsJar(projects.detektRulesRuleauthors)
 }
+
+val javaComponent = components["java"] as AdhocComponentWithVariants
+javaComponent.withVariantsFromConfiguration(configurations["shadowRuntimeElements"]) {
+    skip()
+}
+
+publishing {
+    publications.named<MavenPublication>(DETEKT_PUBLICATION) {
+        artifact(tasks.shadowJar)
+    }
+}
+
+val generatedCliUsage: Configuration by configurations.consumable("generatedCliUsage")
 
 tasks {
-	"test" {
-		dependsOn(":detekt-generator:generateDocumentation")
-	}
+    shadowJar {
+        mergeServiceFiles()
+    }
+
+    shadowDistZip {
+        archiveBaseName = "detekt-cli"
+    }
+    shadowDistTar { enabled = false }
+    distZip { enabled = false }
+    distTar { enabled = false }
+
+    processTestResources {
+        inputs.property("kotlin-version", libs.versions.kotlin.get())
+        filter<ReplaceTokens>("tokens" to mapOf("kotlinVersion" to inputs.properties["kotlin-version"]))
+        filteringCharset = "UTF-8"
+    }
+
+    val runWithHelpFlag by registering(JavaExec::class) {
+        outputs.upToDateWhen { true }
+        classpath = files(shadowJar)
+        args = listOf("--help")
+    }
+
+    val runWithArgsFile by registering(JavaExec::class) {
+        // The task generating these jar files run first.
+        inputs.files(pluginsJarFiles)
+        doNotTrackState("The entire root directory is read as the input source.")
+        classpath = files(shadowJar)
+        workingDir = rootDir
+        args = listOf("@./config/detekt/argsfile", "-p", pluginsJarFiles.files.joinToString(",") { it.path })
+    }
+
+    withType<Jar>().configureEach {
+        manifest {
+            // Workaround for https://github.com/detekt/detekt/issues/5576
+            attributes(mapOf("Add-Opens" to "java.base/java.lang"))
+        }
+    }
+
+    check {
+        dependsOn(runWithHelpFlag, runWithArgsFile)
+    }
+
+    val cliUsage by registering(JavaExec::class) {
+        val cliUsagesOutput = layout.buildDirectory.file("output/cli-usage.md")
+        outputs.file(cliUsagesOutput)
+        classpath = files(shadowJar)
+        args = listOf("--help")
+        doFirst {
+            standardOutput = ByteArrayOutputStream()
+        }
+        doLast {
+            cliUsagesOutput.get().asFile.apply {
+                writeText("```\n")
+                appendBytes((standardOutput as ByteArrayOutputStream).toByteArray())
+                appendText("```\n")
+            }
+        }
+    }
+
+    artifacts.add(generatedCliUsage.name, cliUsage)
 }
 
-// bundle detekt's version for debug logging on rule exceptions
-tasks.withType<Jar> {
-	manifest {
-		attributes(mapOf("DetektVersion" to detektVersion))
-	}
-}
-
+val shadowDist: Configuration by configurations.consumable("shadowDist")
+artifacts.add(shadowDist.name, tasks.shadowDistZip)

@@ -1,40 +1,37 @@
 package io.gitlab.arturbosch.detekt.formatting.wrappers
 
-import com.github.shyiko.ktlint.core.EditorConfig
-import com.github.shyiko.ktlint.core.KtLint
-import com.github.shyiko.ktlint.ruleset.standard.IndentationRule
+import com.pinterest.ktlint.rule.engine.core.api.editorconfig.EditorConfigProperty
+import com.pinterest.ktlint.rule.engine.core.api.editorconfig.INDENT_SIZE_PROPERTY
+import com.pinterest.ktlint.ruleset.standard.rules.IndentationRule
+import com.pinterest.ktlint.ruleset.standard.rules.IndentationRule.Companion.INDENT_WHEN_ARROW_ON_NEW_LINE
+import io.gitlab.arturbosch.detekt.api.ActiveByDefault
 import io.gitlab.arturbosch.detekt.api.Config
-import io.gitlab.arturbosch.detekt.formatting.DEFAULT_CONTINUATION_INDENT
-import io.gitlab.arturbosch.detekt.formatting.DEFAULT_INDENT
+import io.gitlab.arturbosch.detekt.api.Configuration
+import io.gitlab.arturbosch.detekt.api.config
+import io.gitlab.arturbosch.detekt.api.internal.AutoCorrectable
 import io.gitlab.arturbosch.detekt.formatting.FormattingRule
-import org.jetbrains.kotlin.psi.KtFile
 
 /**
- * See https://ktlint.github.io/#rule-indentation for documentation.
- *
- * @configuration indentSize - indentation size (default: 4)
- * @configuration continuationIndentSize - continuation indentation size (default: 4)
- *
- * @active since v1.0.0
- * @autoCorrect since v1.0.0
- * @author Artur Bosch
+ * See [ktlint docs](https://pinterest.github.io/ktlint/<ktlintVersion/>/rules/standard/#indentation) for documentation.
  */
-class Indentation(config: Config) : FormattingRule(config) {
+@ActiveByDefault(since = "1.19.0")
+@AutoCorrectable(since = "1.0.0")
+class Indentation(config: Config) : FormattingRule(
+    config,
+    "Reports mis-indented code"
+) {
 
-	override val wrapping = IndentationRule()
-	override val issue = issueFor("Reports mis-indented code")
+    override val wrapping = IndentationRule()
 
-	private val indentSize = valueOrDefault(INDENT_SIZE, DEFAULT_INDENT)
-	private val continuationIndentSize = valueOrDefault(CONTINUATION_INDENT_SIZE, DEFAULT_CONTINUATION_INDENT)
+    @Configuration("indentation size")
+    private val indentSize by config(4)
 
-	override fun visit(root: KtFile) {
-		super.visit(root)
-		root.node.putUserData(KtLint.EDITOR_CONFIG_USER_DATA_KEY,
-				EditorConfig.fromMap(mapOf(
-						INDENT_SIZE to indentSize.toString(),
-						CONTINUATION_INDENT_SIZE to continuationIndentSize.toString())))
-	}
+    @Configuration("indent when arrow on new line")
+    private val indentWhenArrowOnNewLine by config(false)
+
+    override fun overrideEditorConfigProperties(): Map<EditorConfigProperty<*>, String> =
+        mapOf(
+            INDENT_SIZE_PROPERTY to indentSize.toString(),
+            INDENT_WHEN_ARROW_ON_NEW_LINE to indentWhenArrowOnNewLine.toString(),
+        )
 }
-
-private const val INDENT_SIZE = "indentSize"
-private const val CONTINUATION_INDENT_SIZE = "continuationIndentSize"

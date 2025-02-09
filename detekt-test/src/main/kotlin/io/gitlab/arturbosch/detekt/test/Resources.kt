@@ -1,18 +1,14 @@
 package io.gitlab.arturbosch.detekt.test
 
-import io.gitlab.arturbosch.detekt.api.YamlConfig
-import java.io.File
-import java.net.URI
+import io.github.detekt.test.utils.resource
+import io.github.detekt.utils.openSafeStream
+import io.gitlab.arturbosch.detekt.api.Config
+import io.gitlab.arturbosch.detekt.core.config.YamlConfig
+import org.intellij.lang.annotations.Language
+import java.io.StringReader
 
-internal object Resources
+fun yamlConfig(name: String): Config =
+    resource(name).toURL().openSafeStream().reader().use(YamlConfig::load)
 
-fun resource(name: String): URI {
-	val explicitName = if (name.startsWith("/")) name else "/$name"
-	val resource = Resources::class.java.getResource(explicitName)
-	requireNotNull(resource) { "Make sure the resource '$name' exists!" }
-	return resource.toURI()
-}
-
-fun resourceAsString(name: String): String = File(resource(name)).readText()
-
-fun yamlConfig(resource: String) = YamlConfig.loadResource(Resources::class.java.getResource("/$resource"))
+fun yamlConfigFromContent(@Language("yaml") content: String): Config =
+    StringReader(content).use(YamlConfig::load)

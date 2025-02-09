@@ -1,45 +1,35 @@
 package io.gitlab.arturbosch.detekt.cli.runners
 
+import io.github.detekt.tooling.api.AnalysisResult
+import io.github.detekt.tooling.api.Detekt
+import io.github.detekt.tooling.api.DetektProvider
+import io.github.detekt.tooling.api.UnexpectedError
+import io.github.detekt.tooling.api.spec.ProcessingSpec
+import io.github.detekt.tooling.internal.NotApiButProbablyUsedByUsers
 import io.gitlab.arturbosch.detekt.cli.CliArgs
-import io.gitlab.arturbosch.detekt.cli.OutputFacade
-import io.gitlab.arturbosch.detekt.cli.createPathFilters
-import io.gitlab.arturbosch.detekt.cli.createPlugins
-import io.gitlab.arturbosch.detekt.cli.loadConfiguration
-import io.gitlab.arturbosch.detekt.core.DetektFacade
-import io.gitlab.arturbosch.detekt.core.ProcessingSettings
-import java.util.concurrent.ForkJoinPool
-import kotlin.system.measureTimeMillis
+import io.gitlab.arturbosch.detekt.cli.createSpec
+import java.util.concurrent.Callable
 
-/**
- * @author Artur Bosch
- */
-class Runner(private val arguments: CliArgs) : Executable {
+class Runner(private val spec: ProcessingSpec) : Executable, Callable<AnalysisResult> {
 
-	override fun execute() {
-		val settings = createSettings()
+    @NotApiButProbablyUsedByUsers
+    constructor(
+        arguments: CliArgs,
+        outputPrinter: Appendable,
+        errorPrinter: Appendable
+    ) : this(arguments.createSpec(outputPrinter, errorPrinter))
 
-		val time = measureTimeMillis {
-			val detektion = DetektFacade.create(settings).run()
-			OutputFacade(arguments, detektion, settings).run()
-		}
+    override fun execute() {
+        val result = call()
+        when (val error = result.error) {
+            is UnexpectedError -> throw error.cause
+            else -> error?.let { throw it }
+        }
+    }
 
-		println("\ndetekt finished in $time ms.")
-	}
-
-	private fun createSettings(): ProcessingSettings {
-		with(arguments) {
-			val pathFilters = createPathFilters()
-			val plugins = createPlugins()
-			val config = loadConfiguration()
-			return ProcessingSettings(
-					inputPath,
-					config,
-					pathFilters,
-					parallel,
-					disableDefaultRuleSets,
-					plugins,
-					ForkJoinPool.commonPool(),
-					System.err)
-		}
-	}
+    override fun call(): AnalysisResult {
+        val provider = DetektProvider.load()
+        val detekt: Detekt = provider.get(spec)
+        return detekt.run()
+    }
 }

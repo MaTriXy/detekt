@@ -2,49 +2,74 @@
 
 package io.gitlab.arturbosch.detekt.cli
 
-import io.gitlab.arturbosch.detekt.cli.runners.AstPrinter
+import io.github.detekt.tooling.api.AnalysisResult
+import io.github.detekt.tooling.api.InvalidConfig
+import io.github.detekt.tooling.api.IssuesFound
+import io.github.detekt.tooling.api.UnexpectedError
+import io.github.detekt.tooling.internal.NotApiButProbablyUsedByUsers
+import io.gitlab.arturbosch.detekt.api.internal.whichKotlin
 import io.gitlab.arturbosch.detekt.cli.runners.ConfigExporter
+import io.gitlab.arturbosch.detekt.cli.runners.Executable
 import io.gitlab.arturbosch.detekt.cli.runners.Runner
-import io.gitlab.arturbosch.detekt.cli.runners.SingleRuleRunner
-import io.gitlab.arturbosch.detekt.core.isFile
-import org.jetbrains.kotlin.utils.addToStdlib.ifNotEmpty
-import java.nio.file.Files
+import io.gitlab.arturbosch.detekt.cli.runners.VersionPrinter
+import org.jetbrains.kotlin.config.KotlinCompilerVersion
+import java.io.PrintStream
+import kotlin.system.exitProcess
 
-/**
- * @author Artur Bosch
- */
 fun main(args: Array<String>) {
-	val arguments = parseArgumentsCheckingReportDirectory(args)
-	LOG.active = arguments.debug
-	val executable = when {
-		arguments.generateConfig -> ConfigExporter()
-		arguments.runRule != null -> SingleRuleRunner(arguments)
-		arguments.printAst -> AstPrinter(arguments)
-		else -> Runner(arguments)
-	}
-	executable.execute()
+    val result = CliRunner().run(args)
+    @Suppress("ForbiddenMethodCall")
+    when (val error = result.error) {
+        is InvalidConfig, is IssuesFound -> println(error.message)
+        is UnexpectedError -> {
+            when (val cause = error.cause) {
+                is HelpRequest -> {
+                    println(cause.usageText)
+                    exitProcess(0)
+                }
+                is HandledArgumentViolation -> {
+                    println(cause.message)
+                    println(cause.usageText)
+                }
+                else -> cause.printStackTrace()
+            }
+        }
+        else -> Unit // print nothing extra when there is no error
+    }
+    exitProcess(result.exitCode())
 }
 
-private fun parseArgumentsCheckingReportDirectory(args: Array<String>): CliArgs {
-	val arguments = parseArguments<CliArgs>(args)
-	val messages = validateCli(arguments)
-	messages.ifNotEmpty {
-		failWithErrorMessages(messages)
-	}
-	return arguments
+@NotApiButProbablyUsedByUsers
+@Deprecated(
+    "Don't build a runner yourself.",
+    ReplaceWith(
+        "DetektCli.load().run(args, outputPrinter, errorPrinter)",
+        "io.github.detekt.tooling.api.DetektCli"
+    )
+)
+fun buildRunner(
+    args: Array<String>,
+    outputPrinter: PrintStream,
+    errorPrinter: PrintStream
+): Executable {
+    check(KotlinCompilerVersion.VERSION == whichKotlin()) {
+        """
+            detekt was compiled with Kotlin ${whichKotlin()} but is currently running with ${KotlinCompilerVersion.VERSION}.
+            This is not supported. See https://detekt.dev/docs/gettingstarted/gradle#dependencies for more information.
+        """.trimIndent()
+    }
+    val arguments = parseArguments(args)
+    return when {
+        arguments.showVersion -> VersionPrinter(outputPrinter)
+        arguments.generateConfig != null -> ConfigExporter(arguments, outputPrinter)
+        else -> Runner(arguments, outputPrinter, errorPrinter)
+    }
 }
 
-private fun validateCli(arguments: CliArgs): List<String> {
-	val violations = ArrayList<String>()
-	with(arguments) {
-		output?.let {
-			if (Files.exists(it) && it.isFile()) {
-				violations += "Output file must be a directory."
-			}
-		}
-		if (createBaseline && baseline == null) {
-			violations += "Creating a baseline.xml requires the --baseline parameter to specify a path."
-		}
-	}
-	return violations
+@Suppress("detekt.MagicNumber")
+internal fun AnalysisResult.exitCode(): Int = when (error) {
+    is UnexpectedError -> 1
+    is IssuesFound -> 2
+    is InvalidConfig -> 3
+    null -> 0
 }

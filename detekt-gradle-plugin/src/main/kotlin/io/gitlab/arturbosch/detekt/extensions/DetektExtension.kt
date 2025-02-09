@@ -1,102 +1,93 @@
 package io.gitlab.arturbosch.detekt.extensions
 
-import org.gradle.api.Action
-import org.gradle.api.Project
-import org.gradle.api.file.FileCollection
-import org.gradle.api.internal.artifacts.dependencies.DefaultExternalModuleDependency
+import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.Property
+import java.io.InputStream
+import java.net.URL
+import java.util.Properties
 
-/**
- * @author Artur Bosch
- * @author Said Tahsin Dane
- * @author Olivier Lemasle
- */
-open class DetektExtension(open var version: String = SUPPORTED_DETEKT_VERSION,
-						   open var debug: Boolean = DEFAULT_DEBUG_VALUE,
-						   open var profile: String = DEFAULT_PROFILE_NAME,
-						   open var ideaExtension: IdeaExtension = IdeaExtension()) {
+@Suppress("ComplexInterface")
+interface DetektExtension {
 
-	fun ideaFormatArgs() = ideaExtension.formatArgs(this)
-	fun ideaInspectArgs() = ideaExtension.inspectArgs(this)
+    val toolVersion: Property<String>
 
-	fun idea(configuration: Action<in IdeaExtension>) {
-		configuration.execute(ideaExtension)
-	}
+    val ignoreFailures: Property<Boolean>
 
-	fun defaultProfile(configuration: Action<in ProfileExtension>) {
-		configuration.execute(ProfileStorage.defaultProfile)
-	}
+    val failOnSeverity: Property<FailOnSeverity>
 
-	fun profile(name: String, configuration: Action<in ProfileExtension>) {
-		if (name == DEFAULT_PROFILE_NAME) {
-			defaultProfile(configuration)
-		} else {
-			ProfileExtension(name).apply {
-				ProfileStorage.add(this)
-				configuration.execute(this)
-			}
-		}
-	}
+    val reportsDir: DirectoryProperty
 
-	fun resolveClasspath(project: Project): FileCollection = project
-		.configurations
-		.getByName("detekt")
-		.withDependencies {
-			it.add(
-				DefaultExternalModuleDependency(
-					"io.gitlab.arturbosch.detekt", "detekt-cli", version
-				)
-			)
-		}
+    val source: ConfigurableFileCollection
 
-	fun resolveArguments(project: Project): List<String> {
-		return with(extractArguments()) {
-			if (!contains(INPUT_PARAMETER)) {
-				add(INPUT_PARAMETER)
-				add(project.projectDir.toString())
-			}
-			this
-		}
-	}
+    val baseline: RegularFileProperty
 
-	private fun extractArguments(): MutableList<String> {
-		val defaultProfile = ProfileStorage.defaultProfile
-		val systemOrSelected = ProfileStorage.systemProfile
-				?: ProfileStorage.getByName(profile)
+    val basePath: DirectoryProperty
 
-		val propertyMap =
-				if (systemOrSelected?.name == defaultProfile.name) {
-					defaultProfile.arguments(debug)
-				} else {
-					defaultProfile.arguments(debug).apply {
-						systemOrSelected?.arguments(debug)?.mergeInto(this)
-					}
-				}
+    val enableCompilerPlugin: Property<Boolean>
 
-		val arguments = propertyMap.flatMapTo(ArrayList()) { removeBooleanValues(it.key, it.value) }
+    val config: ConfigurableFileCollection
 
-		if (debug) {
-			val name = systemOrSelected?.name ?: DEFAULT_PROFILE_NAME
-			println("detekt version: $version - usedProfile: $name")
-			println("arguments: $arguments")
-		}
+    val debug: Property<Boolean>
 
-		return arguments
-	}
+    val parallel: Property<Boolean>
 
-	private fun removeBooleanValues(key: String, value: String) =
-			if (value == "true" || value == "false") listOf(key) else listOf(key, value)
+    val allRules: Property<Boolean>
 
-	override fun toString(): String = "DetektExtension(version='$version', " +
-			"debug=$debug, profile='$profile', ideaExtension=$ideaExtension, profiles=${ProfileStorage.all})"
+    val buildUponDefaultConfig: Property<Boolean>
+
+    val disableDefaultRuleSets: Property<Boolean>
+
+    val autoCorrect: Property<Boolean>
+
+    /**
+     * List of Android build variants for which no detekt task should be created.
+     *
+     * This is a combination of build types and flavors, such as fooDebug or barRelease.
+     */
+    val ignoredVariants: ListProperty<String>
+
+    /**
+     * List of Android build types for which no detekt task should be created.
+     */
+    val ignoredBuildTypes: ListProperty<String>
+
+    /**
+     * List of Android build flavors for which no detekt task should be created
+     */
+    val ignoredFlavors: ListProperty<String>
 }
 
-private fun MutableMap<String, String>.mergeInto(other: MutableMap<String, String>) {
-	for ((key, value) in this) {
-		other.merge(key, value) { v1, v2 ->
-			joinMultipleConfigurations(key, v1, v2)
-		}
-	}
+internal fun loadDetektVersion(classLoader: ClassLoader): String {
+    // Other Gradle plugins can also have a versions.properties.
+    val distinctVersions = classLoader
+        .getResources("detekt-versions.properties")
+        .toList()
+        .mapNotNull { versions ->
+            Properties().run {
+                versions.openSafeStream().use(::load)
+                getProperty("detektVersion")
+            }
+        }
+        .distinct()
+    return distinctVersions.singleOrNull() ?: error(
+        "You're importing two detekt plugins which have different versions. " +
+            "(${distinctVersions.joinToString()}) Make sure to align the versions."
+    )
 }
 
-private fun joinMultipleConfigurations(key: String, v1: String, v2: String) =
-		if (key == CONFIG_PARAMETER || key == CONFIG_RESOURCE_PARAMETER) "$v1,$v2" else v2
+// Copy-paste from io.github.detekt.utils.openSafeStream in Resources.kt.
+// Can't use that function, because gradle-plugin is minimising dependencies: see #4748.
+private fun URL.openSafeStream(): InputStream =
+    openConnection()
+        /*
+         * Due to https://bugs.openjdk.java.net/browse/JDK-6947916 and https://bugs.openjdk.java.net/browse/JDK-8155607,
+         * it is necessary to disallow caches to maintain stability on JDK 8 and 11 (and possibly more).
+         * Otherwise, simultaneous invocations of detekt in the same VM can fail spuriously. A similar bug is referenced in
+         * https://github.com/detekt/detekt/issues/3396. The performance regression is likely unnoticeable.
+         * Due to https://github.com/detekt/detekt/issues/4332 it is included for all JDKs.
+         */
+        .apply { useCaches = false }
+        .getInputStream()

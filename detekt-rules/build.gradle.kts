@@ -1,21 +1,30 @@
-configurations.implementation.extendsFrom(configurations.kotlinImplementation)
-configurations.testImplementation.extendsFrom(configurations.kotlinTest)
-
-tasks {
-	"build" {
-		finalizedBy(":detekt-generator:generateDocumentation")
-	}
+plugins {
+    id("module")
 }
-
-val junitPlatformVersion by project
-val spekVersion by project
 
 dependencies {
-	implementation(project(":detekt-api"))
+    runtimeOnly(projects.detektRulesComplexity)
+    runtimeOnly(projects.detektRulesCoroutines)
+    runtimeOnly(projects.detektRulesDocumentation)
+    runtimeOnly(projects.detektRulesEmpty)
+    runtimeOnly(projects.detektRulesErrorprone)
+    runtimeOnly(projects.detektRulesExceptions)
+    runtimeOnly(projects.detektRulesNaming)
+    runtimeOnly(projects.detektRulesPerformance)
+    runtimeOnly(projects.detektRulesStyle)
 
-	testImplementation(project(":detekt-test"))
-	testRuntimeOnly("org.junit.platform:junit-platform-launcher:$junitPlatformVersion")
-	testRuntimeOnly("org.junit.platform:junit-platform-console:$junitPlatformVersion")
-	testRuntimeOnly("org.jetbrains.spek:spek-junit-platform-engine:$spekVersion")
+    testImplementation(projects.detektCore)
+    testImplementation(projects.detektTest)
+    testImplementation(projects.detektRulesComplexity)
+    testImplementation(projects.detektRulesCoroutines)
+    testImplementation(projects.detektRulesDocumentation)
+    testImplementation(projects.detektRulesEmpty)
+    testImplementation(projects.detektRulesErrorprone)
+    testImplementation(projects.detektRulesExceptions)
+    testImplementation(projects.detektRulesNaming)
+    testImplementation(projects.detektRulesPerformance)
+    testImplementation(projects.detektRulesStyle)
+    testImplementation(libs.assertj.core)
+    testImplementation(libs.classgraph)
+    testImplementation(testFixtures(projects.detektApi))
 }
-

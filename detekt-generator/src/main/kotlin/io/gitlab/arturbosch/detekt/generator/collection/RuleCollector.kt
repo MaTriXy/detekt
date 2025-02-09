@@ -2,18 +2,15 @@ package io.gitlab.arturbosch.detekt.generator.collection
 
 import org.jetbrains.kotlin.psi.KtFile
 
-/**
- * @author Marvin Ramin
- */
-class RuleCollector : Collector<Rule> {
-	override val items = mutableListOf<Rule>()
+class RuleCollector(private val textReplacements: Map<String, String>) : Collector<Rule> {
+    override val items = mutableListOf<Rule>()
 
-	override fun visit(file: KtFile) {
-		val visitor = RuleVisitor()
-		file.accept(visitor)
+    override fun visit(file: KtFile) {
+        val visitor = RuleVisitor(textReplacements)
+        file.accept(visitor)
 
-		if (visitor.containsRule) {
-			items.add(visitor.getRule())
-		}
-	}
+        if (visitor.containsRule) {
+            items.add(visitor.getRule())
+        }
+    }
 }

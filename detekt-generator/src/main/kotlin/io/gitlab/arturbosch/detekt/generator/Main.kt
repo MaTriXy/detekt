@@ -2,42 +2,29 @@
 
 package io.gitlab.arturbosch.detekt.generator
 
-import io.gitlab.arturbosch.detekt.cli.failWithErrorMessages
-import io.gitlab.arturbosch.detekt.cli.parseArguments
-import io.gitlab.arturbosch.detekt.core.isFile
-import org.jetbrains.kotlin.utils.addToStdlib.ifNotEmpty
-import java.nio.file.Files
+import com.beust.jcommander.JCommander
+import kotlin.system.exitProcess
 
-/**
- * @author Marvin Ramin
- * @author Artur Bosch
- */
+@Suppress("detekt.SpreadOperator")
 fun main(args: Array<String>) {
-	val arguments = parseArgumentsCheckingReportDirectory(args)
-	val executable = Runner(arguments)
-	executable.execute()
-}
+    val options = GeneratorArgs()
+    val parser = JCommander(options)
+    parser.parse(*args)
 
-private fun parseArgumentsCheckingReportDirectory(args: Array<String>): GeneratorArgs {
-	val arguments = parseArguments<GeneratorArgs>(args)
-	val messages = validateCli(arguments)
-	messages.ifNotEmpty {
-		failWithErrorMessages(messages)
-	}
-	return arguments
-}
+    if (options.help) {
+        parser.usage()
+        exitProcess(0)
+    }
 
-private fun validateCli(arguments: GeneratorArgs): List<String> {
-	val violations = ArrayList<String>()
-	with(arguments) {
-		if (Files.exists(documentationPath) && documentationPath.isFile()) {
-			violations += "Documentation path must be a directory."
-		}
-
-		if (Files.exists(configPath) && configPath.isFile()) {
-			violations += "Config path must be a directory."
-		}
-		// input paths are validated by MultipleExistingPathConverter
-	}
-	return violations
+    val generator = Generator(
+        inputPaths = options.inputPath,
+        textReplacements = options.textReplacements,
+        documentationPath = options.documentationPath,
+        configPath = options.configPath,
+    )
+    if (options.generateCustomRuleConfig) {
+        generator.executeCustomRuleConfig()
+    } else {
+        generator.execute()
+    }
 }

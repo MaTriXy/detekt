@@ -1,100 +1,135 @@
-import java.io.ByteArrayOutputStream
+plugins {
+    id("com.gradleup.shadow") version "8.3.6"
+    id("module")
+    id("application")
+}
 
 application {
-    mainClassName = "io.gitlab.arturbosch.detekt.generator.Main"
+    mainClass = "io.gitlab.arturbosch.detekt.generator.Main"
 }
 
-val jar by tasks.getting(Jar::class) {
-    manifest {
-        attributes.apply { put("Main-Class", "io.gitlab.arturbosch.detekt.generator.Main") }
-    }
+val generatedUsage by configurations.dependencyScope("generatedUsage")
+val generatedUsageOutput by configurations.resolvable("generatedUsageOutput") {
+    extendsFrom(generatedUsage)
 }
-
-// implementation.extendsFrom kotlin is not enough for using cli in a gradle task - #58
-configurations.testImplementation.extendsFrom(configurations.kotlinTest)
-
-val detektVersion by project
-
-val generateDocumentation by tasks.creating {
-    dependsOn(":detekt-generator:shadowJar")
-    description = "Generates detekt documentation and the default config.yml based on Rule KDoc"
-
-    inputs.files(
-            fileTree("${rootProject.rootDir}/detekt-rules/src/main/kotlin"),
-            file("${rootProject.rootDir}/detekt-generator/build/libs/detekt-generator-$detektVersion-all.jar"))
-    outputs.files(
-            fileTree("${rootProject.rootDir}/detekt-generator/documentation"),
-            file("${rootProject.rootDir}/detekt-cli/src/main/resources/default-detekt-config.yml"))
-
-
-    doLast {
-        javaexec {
-            main = "-jar"
-            args = listOf(
-                    "${rootProject.rootDir}/detekt-generator/build/libs/detekt-generator-$detektVersion-all.jar",
-                    "--input",
-                    "${rootProject.rootDir}/detekt-rules/src/main/kotlin" + "," +
-                            "${rootProject.rootDir}/detekt-formatting/src/main/kotlin",
-                    "--documentation",
-                    "${rootProject.rootDir}/docs/pages/documentation",
-                    "--config",
-                    "${rootProject.rootDir}/detekt-cli/src/main/resources")
-        }
-    }
-}
-
-val verifyGeneratorOutput by tasks.creating {
-    dependsOn(listOf(":detekt-generator:shadowJar", ":detekt-generator:generateDocumentation"))
-    description = "Verifies that all documentation and the config.yml are up-to-date"
-    doLast {
-        assertDefaultConfigUpToDate()
-        assertDocumentationUpToDate()
-    }
-}
-
-fun assertDefaultConfigUpToDate() {
-    val configDiff = ByteArrayOutputStream()
-    exec {
-        commandLine = listOf("git", "diff",
-                "${rootProject.rootDir}/detekt-cli/src/main/resources/default-detekt-config.yml")
-        standardOutput = configDiff
-    }
-
-    if (!configDiff.toString().isEmpty()) {
-        throw GradleException("The default-detekt-config.yml is not up-to-date. " +
-                "Please build detekt locally to update it.")
-    }
-}
-
-fun assertDocumentationUpToDate() {
-    val configDiff = ByteArrayOutputStream()
-    exec {
-        commandLine = listOf("git", "diff", "${rootProject.rootDir}/docs/pages/documentation")
-        standardOutput = configDiff
-    }
-
-    if (!configDiff.toString().isEmpty()) {
-        throw GradleException("The detekt documentation is not up-to-date. " +
-                "Please build detekt locally to update it.")
-    }
-}
-
-val kotlinVersion by project
-val junitPlatformVersion by project
-val spekVersion by project
-val jcommanderVersion by project
 
 dependencies {
-    implementation(project(":detekt-cli"))
-    implementation(project(":detekt-core"))
-    implementation(project(":detekt-rules"))
-    implementation(project(":detekt-formatting"))
-    implementation("com.beust:jcommander:$jcommanderVersion")
-    implementation("org.jetbrains.kotlin:kotlin-compiler-embeddable:$kotlinVersion")
-    implementation("org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion")
+    implementation(projects.detektParser)
+    implementation(projects.detektApi)
+    implementation(projects.detektPsiUtils)
+    generatedUsage(projects.detektCli) {
+        targetConfiguration = "generatedCliUsage"
+    }
+    implementation(projects.detektUtils)
+    implementation(libs.jcommander)
 
-    testImplementation(project(":detekt-test"))
-    testRuntime("org.junit.platform:junit-platform-launcher:$junitPlatformVersion")
-    testRuntime("org.junit.platform:junit-platform-console:$junitPlatformVersion")
-    testRuntime("org.jetbrains.spek:spek-junit-platform-engine:$spekVersion")
+    testImplementation(projects.detektCore)
+    testImplementation(projects.detektTestUtils)
+    testImplementation(libs.assertj.core)
+    testImplementation(libs.classgraph)
+    testRuntimeOnly(projects.detektRules)
+}
+
+val documentationDir = "$rootDir/website/docs/rules"
+val configDir = "$rootDir/detekt-core/src/main/resources"
+val defaultConfigFile = "$configDir/default-detekt-config.yml"
+val deprecationFile = "$configDir/deprecation.properties"
+val formattingConfigFile = "$rootDir/detekt-formatting/src/main/resources/config/config.yml"
+val librariesConfigFile = "$rootDir/detekt-rules-libraries/src/main/resources/config/config.yml"
+val ruleauthorsConfigFile = "$rootDir/detekt-rules-ruleauthors/src/main/resources/config/config.yml"
+
+val copyDetektCliUsage by tasks.registering(Copy::class) {
+    from(generatedUsageOutput) { rename { "_cli-options.md" } }
+    destinationDir = rootDir.resolve("website/docs/gettingstarted")
+}
+
+tasks.register("generateWebsite") {
+    dependsOn(
+        copyDetektCliUsage,
+        generateDocumentation,
+        ":dokkaHtmlMultiModule",
+        gradle.includedBuild("detekt-gradle-plugin").task(":dokkaHtml"),
+    )
+}
+
+val generateDocumentation by tasks.registering(JavaExec::class) {
+    dependsOn(
+        ":detekt-rules-libraries:sourcesJar",
+        ":detekt-rules-ruleauthors:sourcesJar",
+    )
+    description = "Generates detekt documentation and the default config.yml based on Rule KDoc"
+    group = "documentation"
+
+    val ruleModules = rootProject.subprojects.asSequence()
+        .filter { "rules" in it.name || it.name == "detekt-formatting" }
+        .filterNot { it.name == "detekt-rules" }
+        .flatMap { it.sourceSets.main.get().kotlin.srcDirs }
+        .filter { it.exists() }
+        .toList()
+
+    classpath(
+        configurations.runtimeClasspath.get(),
+        configurations.compileClasspath.get(),
+        sourceSets.main.get().output,
+    )
+    mainClass = "io.gitlab.arturbosch.detekt.generator.Main"
+    args = listOf(
+        "--input",
+        ruleModules.joinToString(","),
+        "--documentation",
+        documentationDir,
+        "--config",
+        configDir,
+        "--replace",
+        "<ktlintVersion/>=${libs.versions.ktlint.get()}"
+    )
+}
+
+val generatedFormattingConfig by configurations.consumable("generatedFormattingConfig")
+val generatedLibrariesConfig by configurations.consumable("generatedLibrariesConfig")
+val generatedRuleauthorsConfig by configurations.consumable("generatedRuleauthorsConfig")
+val generatedCoreConfig by configurations.consumable("generatedCoreConfig")
+
+artifacts {
+    add(generatedFormattingConfig.name, file(formattingConfigFile)) {
+        builtBy(generateDocumentation)
+    }
+    add(generatedLibrariesConfig.name, file(librariesConfigFile)) {
+        builtBy(generateDocumentation)
+    }
+    add(generatedRuleauthorsConfig.name, file(ruleauthorsConfigFile)) {
+        builtBy(generateDocumentation)
+    }
+    add(generatedCoreConfig.name, file(defaultConfigFile)) {
+        builtBy(generateDocumentation)
+    }
+    add(generatedCoreConfig.name, file(deprecationFile)) {
+        builtBy(generateDocumentation)
+    }
+}
+
+val verifyGeneratorOutput by tasks.registering(Exec::class) {
+    dependsOn(generateDocumentation)
+    description = "Verifies that generated config files are up-to-date"
+    commandLine = listOf(
+        "git",
+        "diff",
+        "--quiet",
+        defaultConfigFile,
+        formattingConfigFile,
+        librariesConfigFile,
+        ruleauthorsConfigFile,
+        deprecationFile,
+    )
+    isIgnoreExitValue = true
+
+    doLast {
+        if (executionResult.get().exitValue == 1) {
+            throw GradleException(
+                "At least one generated configuration file is not up-to-date. " +
+                    "You can execute the generateDocumentation Gradle task " +
+                    "to update generated files then commit the changes."
+            )
+        }
+    }
 }

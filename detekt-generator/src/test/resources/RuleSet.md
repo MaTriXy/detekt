@@ -1,18 +1,38 @@
 style rule set
 
-### WildcardImport
+### MagicNumber
 
 a wildcard import
 
-**Severity**: Defect
+**Active by default**: Yes - Since v1.0.0
 
-**Debt**: 10min
+**Aliases**: alias1, alias2
 
 #### Configuration options:
 
-* `conf1` (default: `foo`)
+* ``conf1`` (default: ``'foo'``)
 
-   a config option
+  a config option
+
+* ~~``conf2``~~ (default: ``false``)
+
+  **Deprecated**: use conf1 instead
+
+  deprecated config
+
+* ``conf3`` (default: ``['a', 'b']``)
+
+  list config
+
+* ~~``conf4``~~ (default: ``['a', 'b']``)
+
+  **Deprecated**: use conf3 instead
+
+  deprecated list config
+
+* ``conf5`` (default: ``120``) (android default: ``100``)
+
+  rule with android variants
 
 #### Noncompliant Code:
 
@@ -30,11 +50,35 @@ import foo.bar
 
 equals null
 
+**Active by default**: No
+
 ### NoUnitKeyword
 
 removes :Unit
 
-**Debt**: 5m
+**Active by default**: Yes - Since v1.16.0
+
+**Requires Type Resolution**
+
+#### Noncompliant Code:
+
+```kotlin
+fun stuff(): Unit {}
+```
+
+#### Compliant Code:
+
+```kotlin
+fun stuff() {}
+```
+
+### ~~DuplicateCaseInWhenExpression~~
+
+is deprecated
+
+Duplicated `case` statements in a `when` expression detected.
+
+**Active by default**: Yes - Since v1.16.0
 
 #### Noncompliant Code:
 

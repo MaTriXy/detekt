@@ -1,18 +1,23 @@
 package io.gitlab.arturbosch.detekt.formatting.wrappers
 
-import com.github.shyiko.ktlint.ruleset.standard.ModifierOrderRule
+import com.pinterest.ktlint.ruleset.standard.rules.ModifierOrderRule
+import io.gitlab.arturbosch.detekt.api.ActiveByDefault
 import io.gitlab.arturbosch.detekt.api.Config
+import io.gitlab.arturbosch.detekt.api.internal.AutoCorrectable
 import io.gitlab.arturbosch.detekt.formatting.FormattingRule
 
 /**
- * See https://ktlint.github.io/#rule-modifier-order for documentation.
+ * See [ktlint docs](https://pinterest.github.io/ktlint/<ktlintVersion/>/rules/standard/#modifier-order) for documentation.
  *
- * @active since v1.0.0
- * @autoCorrect since v1.0.0
- * @author Artur Bosch
+ * This rules overlaps with [style>ModifierOrder](https://detekt.dev/style.html#modifierorder)
+ * from the standard rules, make sure to enable just one. The pro of this rule is that it can auto-correct the issue.
  */
-class ModifierOrdering(config: Config) : FormattingRule(config) {
+@ActiveByDefault(since = "1.0.0")
+@AutoCorrectable(since = "1.0.0")
+class ModifierOrdering(config: Config) : FormattingRule(
+    config,
+    "Detects modifiers in non default order"
+) {
 
-	override val wrapping = ModifierOrderRule()
-	override val issue = issueFor("Detects modifiers in non default order")
+    override val wrapping = ModifierOrderRule()
 }

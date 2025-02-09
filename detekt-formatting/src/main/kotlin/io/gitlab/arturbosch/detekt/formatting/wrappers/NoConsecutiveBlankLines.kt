@@ -1,18 +1,20 @@
 package io.gitlab.arturbosch.detekt.formatting.wrappers
 
-import com.github.shyiko.ktlint.ruleset.standard.NoConsecutiveBlankLinesRule
+import com.pinterest.ktlint.ruleset.standard.rules.NoConsecutiveBlankLinesRule
+import io.gitlab.arturbosch.detekt.api.ActiveByDefault
 import io.gitlab.arturbosch.detekt.api.Config
+import io.gitlab.arturbosch.detekt.api.internal.AutoCorrectable
 import io.gitlab.arturbosch.detekt.formatting.FormattingRule
 
 /**
- * See https://ktlint.github.io/#rule-blank for documentation.
- *
- * @active since v1.0.0
- * @autoCorrect since v1.0.0
- * @author Artur Bosch
+ * See [ktlint docs](https://pinterest.github.io/ktlint/<ktlintVersion/>/rules/standard/#no-consecutive-blank-lines) for documentation.
  */
-class NoConsecutiveBlankLines(config: Config) : FormattingRule(config) {
+@ActiveByDefault(since = "1.0.0")
+@AutoCorrectable(since = "1.0.0")
+class NoConsecutiveBlankLines(config: Config) : FormattingRule(
+    config,
+    "Reports consecutive blank lines"
+) {
 
-	override val wrapping = NoConsecutiveBlankLinesRule()
-	override val issue = issueFor("Reports consecutive blank lines")
+    override val wrapping = NoConsecutiveBlankLinesRule()
 }

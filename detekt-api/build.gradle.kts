@@ -1,16 +1,33 @@
-configurations.implementation.extendsFrom(configurations.kotlinImplementation)
-configurations.testImplementation.extendsFrom(configurations.kotlinTest)
-
-val yamlVersion by project
-val junitPlatformVersion by project
-val spekVersion by project
+plugins {
+    id("module")
+    id("public-api")
+    id("java-test-fixtures")
+    id("dev.drewhamilton.poko") version "0.18.2"
+}
 
 dependencies {
-	implementation("org.yaml:snakeyaml:$yamlVersion")
+    api(libs.kotlin.compilerEmbeddable)
+    implementation(projects.detektUtils)
 
-	testImplementation(project(":detekt-test"))
+    testImplementation(projects.detektTest)
+    testImplementation(libs.assertj.core)
+    testFixturesImplementation(projects.detektTestUtils)
+    testFixturesImplementation(libs.poko.annotations)
+}
 
-	testRuntimeOnly("org.junit.platform:junit-platform-launcher:$junitPlatformVersion")
-	testRuntimeOnly("org.junit.platform:junit-platform-console:$junitPlatformVersion")
-	testRuntimeOnly("org.jetbrains.spek:spek-junit-platform-engine:$spekVersion")
+detekt {
+    config.from("config/detekt.yml")
+}
+
+val javaComponent = components["java"] as AdhocComponentWithVariants
+listOf(configurations.testFixturesApiElements, configurations.testFixturesRuntimeElements).forEach { config ->
+    config.configure {
+        javaComponent.withVariantsFromConfiguration(this) {
+            skip()
+        }
+    }
+}
+
+apiValidation {
+    ignoredPackages.add("io.gitlab.arturbosch.detekt.api.internal")
 }

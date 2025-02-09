@@ -1,33 +1,23 @@
 package io.gitlab.arturbosch.detekt.api
 
-import org.jetbrains.kotlin.psi.KtFile
+import dev.drewhamilton.poko.Poko
+import io.gitlab.arturbosch.detekt.api.internal.validateIdentifier
 
 /**
  * A rule set is a collection of rules and must be defined within a rule set provider implementation.
- *
- * @author Artur Bosch
  */
-class RuleSet(val id: String, val rules: List<BaseRule>) {
+class RuleSet(val id: Id, val rules: Map<Rule.Name, (Config) -> Rule>) {
+    companion object {
+        operator fun invoke(id: Id, rules: List<(Config) -> Rule>): RuleSet =
+            RuleSet(id, rules.associateBy { it(Config.empty).ruleName })
+    }
 
-	init {
-		validateIdentifier(id)
-	}
+    @Poko
+    class Id(val value: String) {
+        init {
+            validateIdentifier(value)
+        }
 
-	/**
-	 * Visits given file with all rules of this rule set, returning a list
-	 * of all code smell findings.
-	 */
-	fun accept(file: KtFile): List<Finding> = rules.flatMap { it.visitFile(file); it.findings }
-
-	/**
-	 * Visits given file with all non-filtered rules of this rule set.
-	 * If a rule is a [MultiRule] the filters are passed to it via a setter
-	 * and later used to filter sub rules of the [MultiRule].
-	 *
-	 * A list of findings is returned for given [KtFile]
-	 */
-	fun accept(file: KtFile, ruleFilters: Set<String>): List<Finding> =
-			rules.filterNot { it.id in ruleFilters }
-					.onEach { if (it is MultiRule) it.ruleFilters = ruleFilters }
-					.flatMap { it.visitFile(file); it.findings }
+        override fun toString(): String = value
+    }
 }

@@ -1,17 +1,23 @@
 package io.gitlab.arturbosch.detekt.api
 
-import org.jetbrains.kotlin.com.intellij.openapi.util.Key
+import org.jetbrains.kotlin.com.intellij.openapi.util.UserDataHolder
 
 /**
- * @author Artur Bosch
+ * Storage for all kinds of findings and additional information
+ * which needs to be transferred from the detekt engine to the user.
  */
-interface Detektion {
-	val findings: Map<String, List<Finding>>
-	val notifications: Collection<Notification>
-	val metrics: Collection<ProjectMetric>
+interface Detektion : UserDataHolder {
+    val issues: List<Issue>
+    val notifications: Collection<Notification>
+    val metrics: Collection<ProjectMetric>
 
-	fun <V> getData(key: Key<V>): V?
-	fun <V> addData(key: Key<V>, value: V)
-	fun add(notification: Notification)
-	fun add(projectMetric: ProjectMetric)
+    /**
+     * Stores a notification in the result.
+     */
+    fun add(notification: Notification)
+
+    /**
+     * Stores a metric calculated for the whole project in the result.
+     */
+    fun add(projectMetric: ProjectMetric)
 }

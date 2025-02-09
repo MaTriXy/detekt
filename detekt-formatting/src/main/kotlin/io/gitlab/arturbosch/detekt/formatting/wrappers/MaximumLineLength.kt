@@ -1,37 +1,40 @@
 package io.gitlab.arturbosch.detekt.formatting.wrappers
 
-import com.github.shyiko.ktlint.core.EditorConfig
-import com.github.shyiko.ktlint.core.KtLint
-import com.github.shyiko.ktlint.ruleset.standard.MaxLineLengthRule
+import com.pinterest.ktlint.rule.engine.core.api.editorconfig.EditorConfigProperty
+import com.pinterest.ktlint.rule.engine.core.api.editorconfig.MAX_LINE_LENGTH_PROPERTY
+import com.pinterest.ktlint.ruleset.standard.rules.MaxLineLengthRule
+import io.gitlab.arturbosch.detekt.api.ActiveByDefault
+import io.gitlab.arturbosch.detekt.api.Alias
 import io.gitlab.arturbosch.detekt.api.Config
-import io.gitlab.arturbosch.detekt.formatting.ANDROID_MAX_LINE_LENGTH
-import io.gitlab.arturbosch.detekt.formatting.DEFAULT_IDEA_LINE_LENGTH
+import io.gitlab.arturbosch.detekt.api.Configuration
+import io.gitlab.arturbosch.detekt.api.config
+import io.gitlab.arturbosch.detekt.api.configWithAndroidVariants
 import io.gitlab.arturbosch.detekt.formatting.FormattingRule
-import org.jetbrains.kotlin.psi.KtFile
 
 /**
- * See https://ktlint.github.io for documentation.
+ * See [ktlint docs](https://pinterest.github.io/ktlint/<ktlintVersion/>/rules/standard/#max-line-length) for documentation.
  *
- * @configuration maxLineLength - maximum line length (default: 120)
- *
- * @active since v1.0.0
- * @author Artur Bosch
+ * This rules overlaps with [style>MaxLineLength](https://detekt.dev/style.html#maxlinelength)
+ * from the standard rules, make sure to enable just one or keep them aligned.
  */
-class MaximumLineLength(config: Config) : FormattingRule(config) {
+@ActiveByDefault(since = "1.0.0")
+@Alias("MaxLineLength")
+class MaximumLineLength(config: Config) : FormattingRule(
+    config,
+    "Reports lines with exceeded length"
+) {
 
-	override val wrapping = MaxLineLengthRule()
-	override val issue = issueFor("Reports lines with exceeded length")
+    override val wrapping = MaxLineLengthRule()
 
-	private val defaultMaxLineLength =
-			if (isAndroid) ANDROID_MAX_LINE_LENGTH
-			else DEFAULT_IDEA_LINE_LENGTH
-	private val maxLineLength: Int = valueOrDefault(MAX_LINE_LENGTH, defaultMaxLineLength)
+    @Configuration("maximum line length")
+    private val maxLineLength: Int by configWithAndroidVariants(120, 100)
 
-	override fun visit(root: KtFile) {
-		super.visit(root)
-		root.node.putUserData(KtLint.EDITOR_CONFIG_USER_DATA_KEY,
-				EditorConfig.fromMap(mapOf(MAX_LINE_LENGTH to maxLineLength.toString())))
-	}
+    @Configuration("ignore back ticked identifier")
+    private val ignoreBackTickedIdentifier by config(false)
+
+    override fun overrideEditorConfigProperties(): Map<EditorConfigProperty<*>, String> =
+        mapOf(
+            MaxLineLengthRule.IGNORE_BACKTICKED_IDENTIFIER_PROPERTY to ignoreBackTickedIdentifier.toString(),
+            MAX_LINE_LENGTH_PROPERTY to maxLineLength.toString(),
+        )
 }
-
-private const val MAX_LINE_LENGTH = "maxLineLength"

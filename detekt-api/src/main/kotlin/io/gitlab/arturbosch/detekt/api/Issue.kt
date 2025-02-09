@@ -1,61 +1,53 @@
 package io.gitlab.arturbosch.detekt.api
 
-/**
- * @author Artur Bosch
- * @author Marvin Ramin
- * @author schalkms
- */
+import dev.drewhamilton.poko.Poko
+import java.net.URI
+import java.nio.file.Path
 
 /**
- * An issue represents a problem in the codebase.
+ * Represents a problem detected by detekt on the source code
+ *
+ * An Issue has information about the rule that detected the problem, a severity and an entity with information
+ * about the position. Entity references can also be considered for deeper characterization.
  */
-data class Issue(val id: String,
-				 val severity: Severity,
-				 val description: String,
-				 val debt: Debt,
-				 val aliases: Set<String> = setOf()) {
+@Poko
+class Issue(
+    val ruleInstance: RuleInstance,
+    val entity: Entity,
+    val references: List<Entity>,
+    val message: String,
+    val severity: Severity,
+    val suppressReasons: List<String>,
+) {
 
-	init {
-		validateIdentifier(id)
-	}
+    val location: Location
+        get() = entity.location
 
-	override fun toString(): String {
-		return "Issue(id='$id', severity=$severity, debt=$debt)"
-	}
+    @Poko
+    class Entity(
+        val signature: String,
+        val location: Location,
+    )
+
+    @Poko
+    class Location(
+        val source: SourceLocation,
+        val endSource: SourceLocation,
+        val text: TextLocation,
+        val path: Path,
+    ) : Comparable<Location> {
+        override fun compareTo(other: Location): Int = compareValuesBy(this, other, { it.path }, { it.source })
+    }
 }
 
-/**
- * Rules can classified into different severity grades. Maintainer can choose
- * a grade which is most harmful to their projects.
- */
-enum class Severity {
-	CodeSmell, Style, Warning, Defect, Minor, Maintainability, Security, Performance
+val Issue.suppressed: Boolean
+    get() = suppressReasons.isNotEmpty()
 
-}
-
-/**
- * Debt describes the estimated amount of work needed to fix a given issue.
- */
-@Suppress("MagicNumber")
-data class Debt(val days: Int = 0, val hours: Int = 0, val mins: Int = 0) {
-
-	init {
-		require(days >= 0 && hours >= 0 && mins >= 0)
-		require(!(days == 0 && hours == 0 && mins == 0))
-	}
-
-	companion object {
-		val TWENTY_MINS = Debt(0, 0, 20)
-		val TEN_MINS = Debt(0, 0, 10)
-		val FIVE_MINS = Debt(0, 0, 5)
-	}
-
-	override fun toString(): String {
-		return with(StringBuilder()) {
-			if (days > 0) append("${days}d ")
-			if (hours > 0) append("${hours}h ")
-			if (mins > 0) append("${mins}min")
-			toString()
-		}.trim()
-	}
-}
+@Poko
+class RuleInstance(
+    val id: String,
+    val ruleSetId: RuleSet.Id,
+    val url: URI?,
+    val description: String,
+    val severity: Severity,
+)

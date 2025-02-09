@@ -2,40 +2,53 @@ package io.gitlab.arturbosch.detekt.cli
 
 import com.beust.jcommander.JCommander
 import com.beust.jcommander.ParameterException
+import kotlin.io.path.isRegularFile
+import kotlin.io.path.notExists
 
-val jCommander = JCommander()
+fun parseArguments(args: Array<out String>): CliArgs {
+    val cli = CliArgs()
 
-inline fun <reified T : Args> parseArguments(args: Array<String>): T {
-	val cli = T::class.java.declaredConstructors.firstOrNull()?.newInstance() as? T
-			?: throw IllegalStateException("Could not create Args object for class ${T::class.java}")
+    val jCommander = JCommander(cli)
+    jCommander.programName = "detekt"
 
-	jCommander.addObject(cli)
-	jCommander.programName = "detekt"
+    try {
+        @Suppress("SpreadOperator")
+        jCommander.parse(*args)
+    } catch (@Suppress("SwallowedException") ex: ParameterException) {
+        // Stacktrace in jCommander is likely irrelevant
+        throw HandledArgumentViolation(ex.message, jCommander.usageAsString())
+    }
 
-	try {
-		jCommander.parse(*args)
-	} catch (ex: ParameterException) {
-		val message = ex.message
-		failWithErrorMessages(message)
-	}
+    if (cli.help) {
+        throw HelpRequest(jCommander.usageAsString())
+    }
 
-	if (cli.help) {
-		jCommander.usage()
-		System.exit(0)
-	}
-
-	return cli
+    return cli.apply { validate(jCommander) }
 }
 
-fun failWithErrorMessages(vararg messages: String?) {
-	failWithErrorMessages(messages.asIterable())
+private fun JCommander.usageAsString(): String {
+    val usage = StringBuilder()
+    this.usageFormatter.usage(usage)
+    return usage.toString()
 }
 
-fun failWithErrorMessages(messages: Iterable<String?>) {
-	messages.forEach {
-		println(it)
-	}
-	println()
-	jCommander.usage()
-	System.exit(-1)
+private fun CliArgs.validate(jCommander: JCommander) {
+    var violation: String? = null
+    val baseline = baseline
+
+    if (createBaseline && baseline == null) {
+        violation = "Creating a baseline.xml requires the --baseline parameter to specify a path."
+    }
+
+    if (!createBaseline && baseline != null) {
+        if (baseline.notExists()) {
+            violation = "The file specified by --baseline should exist '$baseline'."
+        } else if (!baseline.isRegularFile()) {
+            violation = "The path specified by --baseline should be a file '$baseline'."
+        }
+    }
+
+    if (violation != null) {
+        throw HandledArgumentViolation(violation, jCommander.usageAsString())
+    }
 }

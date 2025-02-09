@@ -1,44 +1,80 @@
 package io.gitlab.arturbosch.detekt.generator
 
+import com.beust.jcommander.DynamicParameter
+import com.beust.jcommander.IValueValidator
 import com.beust.jcommander.Parameter
-import io.gitlab.arturbosch.detekt.cli.Args
-import io.gitlab.arturbosch.detekt.cli.ExistingPathConverter
-import io.gitlab.arturbosch.detekt.cli.MultipleExistingPathConverter
+import com.beust.jcommander.ParameterException
+import com.beust.jcommander.converters.IParameterSplitter
+import com.beust.jcommander.converters.PathConverter
 import java.nio.file.Path
+import kotlin.io.path.exists
+import kotlin.io.path.isDirectory
 
-/**
- * @author Marvin Ramin
- * @author Artur Bosch
- */
-class GeneratorArgs : Args {
+class GeneratorArgs {
 
-	@Parameter(names = ["--input", "-i"],
-			required = true,
-			description = "Input paths to analyze.")
-	private var input: String? = null
+    @Parameter(
+        names = ["--input", "-i"],
+        required = true,
+        converter = PathConverter::class,
+        splitter = PathSplitter::class,
+        validateValueWith = [PathValidator::class],
+        description = "Input paths to analyze."
+    )
+    var inputPath: List<Path> = emptyList()
 
-	@Parameter(names = ["--documentation", "-d"],
-			required = true,
-			converter = ExistingPathConverter::class, description = "Output path for generated documentation.")
-	private var documentation: Path? = null
+    @Parameter(
+        names = ["--documentation", "-d"],
+        converter = PathConverter::class,
+        validateValueWith = [DirectoryValidator::class],
+        description = "Output path for generated documentation."
+    )
+    var documentationPath: Path? = null
 
-	@Parameter(names = ["--config", "-c"],
-			required = true,
-			converter = ExistingPathConverter::class, description = "Output path for generated detekt config.")
-	private var config: Path? = null
+    @Parameter(
+        names = ["--config", "-c"],
+        converter = PathConverter::class,
+        validateValueWith = [DirectoryValidator::class],
+        description = "Output path for generated detekt config."
+    )
+    var configPath: Path? = null
 
-	@Parameter(names = ["--help", "-h"],
-			help = true, description = "Shows the usage.")
-	override var help: Boolean = false
+    @Parameter(
+        names = ["--help", "-h"],
+        help = true,
+        description = "Shows the usage."
+    )
+    var help: Boolean = false
 
-	val inputPath: List<Path> by lazy {
-		MultipleExistingPathConverter().convert(input
-				?: throw IllegalStateException("Input parameter was not initialized by jcommander!"))
-	}
-	val documentationPath: Path
-		get() = documentation
-				?: throw IllegalStateException("Documentation output path was not initialized by jcommander!")
+    @Parameter(
+        names = ["--generate-custom-rule-config", "-gcrc"],
+        description = "Generate config for user-defined rules. " +
+            "Path to user rules can be specified with --input option"
+    )
+    var generateCustomRuleConfig: Boolean = false
 
-	val configPath: Path
-		get() = config ?: throw IllegalStateException("Configuration output path was not initialized by jcommander!")
+    @DynamicParameter(
+        names = ["--replace", "-r"],
+        description = "Any number of key and value pairs that are used to replace placeholders " +
+            "during data collection and output generation. Key and value are separated by '='. " +
+            "The property may be used multiple times."
+    )
+    var textReplacements: Map<String, String> = mutableMapOf()
+
+    class PathSplitter : IParameterSplitter {
+        override fun split(value: String): List<String> = value.split(',', ';')
+    }
+
+    class PathValidator : IValueValidator<List<Path>> {
+        override fun validate(name: String, value: List<Path>) {
+            value.forEach {
+                if (!it.exists()) throw ParameterException("Input path does not exist: $it")
+            }
+        }
+    }
+
+    class DirectoryValidator : IValueValidator<Path> {
+        override fun validate(name: String, value: Path) {
+            if (!value.isDirectory()) throw ParameterException("Value passed to $name must be a directory.")
+        }
+    }
 }

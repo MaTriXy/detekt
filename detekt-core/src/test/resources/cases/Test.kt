@@ -1,7 +1,9 @@
+@file:AnAnnotation
+
 package cases
 
-/**
- * @author Artur Bosch
- */
 @Suppress("Unused")
 class Test
+
+@Target(AnnotationTarget.FILE, AnnotationTarget.FUNCTION)
+annotation class AnAnnotation

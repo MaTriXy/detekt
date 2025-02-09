@@ -1,23 +1,36 @@
 package io.gitlab.arturbosch.detekt.api
 
-import java.nio.file.Files
 import java.nio.file.Path
+import kotlin.io.path.createParentDirectories
+import kotlin.io.path.extension
+import kotlin.io.path.writeText
 
 /**
- * @author Artur Bosch
+ * Translates detekt's result container - [Detektion] - into an output report
+ * which is written inside a file.
  */
 abstract class OutputReport : Extension {
 
-	abstract var fileName: String
-	abstract val ending: String
+    /**
+     * Supported ending of this report type.
+     */
+    abstract val ending: String
 
-	fun write(filePath: Path, detektion: Detektion) {
-		val smellData = render(detektion)
-		smellData?.let {
-			filePath.parent?.let { Files.createDirectories(it) }
-			Files.write(filePath, it.toByteArray())
-		}
-	}
+    /**
+     * Renders result and writes it to the given [filePath].
+     */
+    fun write(filePath: Path, detektion: Detektion) {
+        val reportData = render(detektion)
+        if (reportData != null) {
+            assert(filePath.extension == ending) {
+                "The $id needs to have a file ending of type .$ending, but was ${filePath.fileName}."
+            }
+            filePath.createParentDirectories().writeText(reportData)
+        }
+    }
 
-	abstract fun render(detektion: Detektion): String?
+    /**
+     * Defines the translation process of detekt's result into a string.
+     */
+    abstract fun render(detektion: Detektion): String?
 }

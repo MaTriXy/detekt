@@ -1,18 +1,20 @@
 package io.gitlab.arturbosch.detekt.formatting.wrappers
 
-import com.github.shyiko.ktlint.ruleset.standard.CommentSpacingRule
+import com.pinterest.ktlint.ruleset.standard.rules.CommentSpacingRule
+import io.gitlab.arturbosch.detekt.api.ActiveByDefault
 import io.gitlab.arturbosch.detekt.api.Config
+import io.gitlab.arturbosch.detekt.api.internal.AutoCorrectable
 import io.gitlab.arturbosch.detekt.formatting.FormattingRule
 
 /**
- * See https://ktlint.github.io for documentation.
- *
- * @active since v1.0.0
- * @autoCorrect since v1.0.0
- * @author Artur Bosch
+ * See [ktlint docs](https://pinterest.github.io/ktlint/<ktlintVersion/>/rules/standard/#comment-spacing) for documentation.
  */
-class CommentSpacing(config: Config) : FormattingRule(config) {
+@ActiveByDefault(since = "1.0.0")
+@AutoCorrectable(since = "1.0.0")
+class CommentSpacing(config: Config) : FormattingRule(
+    config,
+    "Checks if comments have the right spacing"
+) {
 
-	override val wrapping = CommentSpacingRule()
-	override val issue = issueFor("Checks if comments have the right spacing")
+    override val wrapping = CommentSpacingRule()
 }

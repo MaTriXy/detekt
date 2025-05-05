@@ -2,11 +2,11 @@ plugins {
     id("module")
     id("public-api")
     id("java-test-fixtures")
-    id("dev.drewhamilton.poko") version "0.18.2"
+    id("dev.drewhamilton.poko") version "0.18.6"
 }
 
 dependencies {
-    api(libs.kotlin.compilerEmbeddable)
+    api(libs.kotlin.compiler)
     implementation(projects.detektUtils)
 
     testImplementation(projects.detektTest)

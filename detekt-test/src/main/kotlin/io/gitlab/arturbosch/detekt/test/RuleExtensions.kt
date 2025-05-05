@@ -1,5 +1,6 @@
 package io.gitlab.arturbosch.detekt.test
 
+import io.github.detekt.test.utils.KotlinEnvironmentContainer
 import io.github.detekt.test.utils.KotlinScriptEngine
 import io.github.detekt.test.utils.compileContentForTest
 import io.gitlab.arturbosch.detekt.api.CompilerResources
@@ -10,80 +11,56 @@ import io.gitlab.arturbosch.detekt.api.Rule
 import io.gitlab.arturbosch.detekt.api.RuleSet
 import io.gitlab.arturbosch.detekt.core.suppressors.isSuppressedBy
 import org.intellij.lang.annotations.Language
-import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
 import org.jetbrains.kotlin.config.languageVersionSettings
 import org.jetbrains.kotlin.psi.KtFile
 import org.jetbrains.kotlin.resolve.calls.smartcasts.DataFlowValueFactoryImpl
-import kotlin.reflect.full.hasAnnotation
 
 private val shouldCompileTestSnippets: Boolean =
     System.getProperty("compile-test-snippets", "false")!!.toBoolean()
 
-fun Rule.compileAndLint(
-    @Language("kotlin") content: String,
-    compilerResources: CompilerResources = FakeCompilerResources(),
-): List<Finding> {
-    require(!this::class.hasAnnotation<RequiresFullAnalysis>()) {
-        "${this.ruleName} requires full analysis so you should use compileAndLintWithContext instead of compileAndLint"
-    }
-    if (shouldCompileTestSnippets) {
-        KotlinScriptEngine.compile(content)
-    }
-    return lint(content, compilerResources)
-}
-
 fun Rule.lint(
     @Language("kotlin") content: String,
-    compilerResources: CompilerResources = FakeCompilerResources()
+    compilerResources: CompilerResources = FakeCompilerResources(),
+    compile: Boolean = true,
 ): List<Finding> {
-    require(!this::class.hasAnnotation<RequiresFullAnalysis>()) {
+    require(this !is RequiresFullAnalysis) {
         "${this.ruleName} requires full analysis so you should use lintWithContext instead of lint"
+    }
+    if (compile && shouldCompileTestSnippets) {
+        KotlinScriptEngine.compile(content)
     }
     val ktFile = compileContentForTest(content)
     return visitFile(ktFile, compilerResources = compilerResources).filterSuppressed(this)
 }
 
-fun Rule.lintWithContext(
-    environment: KotlinCoreEnvironment,
+fun <T> T.lintWithContext(
+    environment: KotlinEnvironmentContainer,
     @Language("kotlin") content: String,
     @Language("kotlin") vararg additionalContents: String,
     compilerResources: CompilerResources = CompilerResources(
         environment.configuration.languageVersionSettings,
         DataFlowValueFactoryImpl(environment.configuration.languageVersionSettings)
-    )
-): List<Finding> {
-    require(this::class.hasAnnotation<RequiresFullAnalysis>()) {
-        "${this.ruleName} doesn't require full analysis so you should use lint instead of lintWithContext"
+    ),
+    compile: Boolean = true,
+): List<Finding> where T : Rule, T : RequiresFullAnalysis {
+    if (compile && shouldCompileTestSnippets) {
+        KotlinScriptEngine.compile(content)
     }
     val ktFile = compileContentForTest(content)
     val additionalKtFiles = additionalContents.mapIndexed { index, additionalContent ->
         compileContentForTest(additionalContent, "AdditionalTest$index.kt")
     }
-    val bindingContext = environment.createBindingContext(listOf(ktFile) + additionalKtFiles)
+    setBindingContext(environment.createBindingContext(listOf(ktFile) + additionalKtFiles))
 
-    return visitFile(ktFile, bindingContext, compilerResources).filterSuppressed(this)
+    return visitFile(ktFile, compilerResources).filterSuppressed(this)
 }
 
-fun Rule.compileAndLintWithContext(
-    environment: KotlinCoreEnvironment,
-    @Language("kotlin") content: String,
-    compilerResources: CompilerResources = CompilerResources(
-        environment.configuration.languageVersionSettings,
-        DataFlowValueFactoryImpl(environment.configuration.languageVersionSettings)
-    )
-): List<Finding> {
-    require(this::class.hasAnnotation<RequiresFullAnalysis>()) {
-        "${this.ruleName} doesn't require full analysis so you should use compileAndLintWithContext instead of " +
-            "compileAndLint"
+fun Rule.lint(ktFile: KtFile, compilerResources: CompilerResources = FakeCompilerResources()): List<Finding> {
+    require(this !is RequiresFullAnalysis) {
+        "${this.ruleName} requires full analysis so you should use lintWithContext instead of lint"
     }
-    if (shouldCompileTestSnippets) {
-        KotlinScriptEngine.compile(content)
-    }
-    return lintWithContext(environment, content, compilerResources = compilerResources)
+    return visitFile(ktFile, compilerResources = compilerResources).filterSuppressed(this)
 }
-
-fun Rule.lint(ktFile: KtFile, compilerResources: CompilerResources = FakeCompilerResources()): List<Finding> =
-    visitFile(ktFile, compilerResources = compilerResources).filterSuppressed(this)
 
 private fun List<Finding>.filterSuppressed(rule: Rule): List<Finding> =
     filterNot {

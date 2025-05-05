@@ -1,10 +1,10 @@
 package io.gitlab.arturbosch.detekt.rules.coroutines
 
 import io.gitlab.arturbosch.detekt.api.ActiveByDefault
-import io.gitlab.arturbosch.detekt.api.CodeSmell
 import io.gitlab.arturbosch.detekt.api.Config
 import io.gitlab.arturbosch.detekt.api.Configuration
 import io.gitlab.arturbosch.detekt.api.Entity
+import io.gitlab.arturbosch.detekt.api.Finding
 import io.gitlab.arturbosch.detekt.api.RequiresFullAnalysis
 import io.gitlab.arturbosch.detekt.api.Rule
 import io.gitlab.arturbosch.detekt.api.config
@@ -41,13 +41,14 @@ import org.jetbrains.kotlin.types.typeUtil.supertypes
  * class MyRepository(dispatchers: CoroutineDispatcher = Dispatchers.IO)
  * </compliant>
  */
-@RequiresFullAnalysis
 @ActiveByDefault(since = "1.21.0")
-class InjectDispatcher(config: Config) : Rule(
-    config,
-    "Don't hardcode dispatchers when creating new coroutines or calling `withContext`. " +
-        "Use dependency injection for dispatchers to make testing easier."
-) {
+class InjectDispatcher(config: Config) :
+    Rule(
+        config,
+        "Don't hardcode dispatchers when creating new coroutines or calling `withContext`. " +
+            "Use dependency injection for dispatchers to make testing easier."
+    ),
+    RequiresFullAnalysis {
 
     @Configuration("The names of dispatchers to detect by this rule")
     private val dispatcherNames: Set<String> by config(listOf("IO", "Default", "Unconfined")) { it.toSet() }
@@ -63,7 +64,7 @@ class InjectDispatcher(config: Config) : Rule(
         if (isCoroutineDispatcher && !isUsedAsParameter) {
             if (expression.isReceiverNotInjected()) return
             report(
-                CodeSmell(
+                Finding(
                     Entity.from(expression),
                     "Dispatcher ${expression.getReferencedName()} is used without dependency injection."
                 )

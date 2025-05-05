@@ -12,6 +12,7 @@ import io.gitlab.arturbosch.detekt.core.FileProcessorLocator
 import io.gitlab.arturbosch.detekt.core.ProcessingSettings
 import io.gitlab.arturbosch.detekt.core.config.validation.checkConfiguration
 import io.gitlab.arturbosch.detekt.core.extensions.handleReportingExtensions
+import io.gitlab.arturbosch.detekt.core.getRules
 import io.gitlab.arturbosch.detekt.core.reporting.OutputFacade
 import io.gitlab.arturbosch.detekt.core.rules.createRuleProviders
 import io.gitlab.arturbosch.detekt.core.util.PerformanceMonitor.Phase
@@ -34,15 +35,21 @@ internal interface Lifecycle {
         measure(Phase.ValidateConfig) { checkConfiguration(settings, baselineConfig) }
         val filesToAnalyze = measure(Phase.Parsing) { parsingStrategy.invoke(settings) }
         val bindingContext = measure(Phase.Binding) { bindingProvider.invoke(filesToAnalyze) }
-        val (processors, ruleSets) = measure(Phase.LoadingExtensions) {
-            processorsProvider.invoke() to ruleSetsProvider.invoke()
+        val (processors, rules) = measure(Phase.LoadingExtensions) {
+            val rules = getRules(
+                fullAnalysis = bindingContext != BindingContext.EMPTY,
+                ruleSetProviders = ruleSetsProvider.invoke(),
+                config = settings.config,
+                log = settings::debug,
+            )
+            processorsProvider.invoke() to rules
         }
 
         val result = measure(Phase.Analyzer) {
-            val analyzer = Analyzer(settings, ruleSets, processors, bindingContext)
+            val analyzer = Analyzer(settings, rules.filter { it.ruleInstance.active }, processors, bindingContext)
             processors.forEach { it.onStart(filesToAnalyze) }
             val issues = analyzer.run(filesToAnalyze)
-            val result: Detektion = DetektResult(issues)
+            val result: Detektion = DetektResult(issues, rules.map { it.ruleInstance })
             processors.forEach { it.onFinish(filesToAnalyze, result) }
             result
         }
@@ -62,7 +69,13 @@ internal class DefaultLifecycle(
     override val bindingProvider: (files: List<KtFile>) -> BindingContext =
         {
             if (settings.spec.projectSpec.analysisMode == AnalysisMode.full) {
-                generateBindingContext(settings.environment, it, settings::debug, settings::info)
+                generateBindingContext(
+                    settings.project,
+                    settings.configuration,
+                    it,
+                    settings::debug,
+                    settings::info
+                )
             } else {
                 BindingContext.EMPTY
             }
@@ -70,5 +83,5 @@ internal class DefaultLifecycle(
     override val processorsProvider: () -> List<FileProcessListener> =
         { FileProcessorLocator(settings).load() },
     override val ruleSetsProvider: () -> List<RuleSetProvider> =
-        { settings.createRuleProviders() }
+        { settings.createRuleProviders() },
 ) : Lifecycle

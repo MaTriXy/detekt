@@ -1,9 +1,9 @@
 package io.gitlab.arturbosch.detekt.rules.coroutines
 
 import io.gitlab.arturbosch.detekt.api.Alias
-import io.gitlab.arturbosch.detekt.api.CodeSmell
 import io.gitlab.arturbosch.detekt.api.Config
 import io.gitlab.arturbosch.detekt.api.Entity
+import io.gitlab.arturbosch.detekt.api.Finding
 import io.gitlab.arturbosch.detekt.api.RequiresFullAnalysis
 import io.gitlab.arturbosch.detekt.api.Rule
 import io.gitlab.arturbosch.detekt.rules.coroutines.utils.isCoroutineScope
@@ -43,13 +43,15 @@ import org.jetbrains.kotlin.resolve.BindingContext
  * </compliant>
  *
  */
-@RequiresFullAnalysis
 @Alias("SuspendFunctionOnCoroutineScope")
-class SuspendFunWithCoroutineScopeReceiver(config: Config) : Rule(
-    config,
-    "The `suspend` modifier should not be used for functions that use a CoroutinesScope as receiver. You should " +
-        "use suspend functions without the receiver or use plain functions and use coroutineScope { } instead."
-) {
+class SuspendFunWithCoroutineScopeReceiver(config: Config) :
+    Rule(
+        config,
+        "The `suspend` modifier should not be used for functions that use a CoroutinesScope as receiver. You should " +
+            "use suspend functions without the receiver or use plain functions and use coroutineScope { } instead."
+    ),
+    RequiresFullAnalysis {
+
     override fun visitNamedFunction(function: KtNamedFunction) {
         checkReceiver(function)
     }
@@ -63,7 +65,7 @@ class SuspendFunWithCoroutineScopeReceiver(config: Config) : Rule(
             ?: return
         if (receiver.isCoroutineScope()) {
             report(
-                CodeSmell(
+                Finding(
                     entity = Entity.from(suspendModifier),
                     message = "`suspend` function uses CoroutineScope as receiver."
                 )

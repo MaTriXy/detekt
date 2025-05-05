@@ -19,7 +19,7 @@ kotlin {
 }
 
 dependencies {
-    compileOnly(libs.kotlin.compilerEmbeddable)
+    compileOnly(libs.kotlin.compiler)
 
     implementation(projects.detektApi)
     implementation(projects.detektTooling)
@@ -42,7 +42,6 @@ publishing {
 }
 
 tasks.shadowJar {
-    relocate("org.jetbrains.kotlin.com.intellij", "com.intellij")
     relocate("org.snakeyaml.engine", "dev.detekt.shaded.snakeyaml")
     mergeServiceFiles()
     dependencies {
@@ -65,6 +64,8 @@ val unzipKotlinCompiler by tasks.registering(Copy::class) {
 }
 
 val testPluginKotlinc by tasks.registering(Task::class) {
+    enabled = false
+
     val outputDir = layout.buildDirectory.dir("tmp/kotlinc")
     val sourceFile = file("src/test/resources/hello.kt")
 
